@@ -4,13 +4,7 @@ import bcrypt from "bcryptjs";
 import { User } from "@/lib/db/models/user.model";
 import type { JWT } from "next-auth/jwt";
 import type { Session } from "next-auth";
-
-export interface TokenUser {
-    id: string;
-    name?: string | null;
-    email?: string | null;
-    roles: string[]; // only string[] to match NextAuth expected types
-}
+import { TokenUser } from "@/types/auth";
 
 export const authOptions: AuthOptions = {
     providers: [
@@ -33,7 +27,7 @@ export const authOptions: AuthOptions = {
                     id: user._id.toString(),
                     name: user.name,
                     email: user.email,
-                    roles: user.roles || [], // string[] ✅
+                    roles: user.roles || [],
                 };
             },
         }),

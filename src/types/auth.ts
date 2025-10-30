@@ -14,6 +14,6 @@ export interface TokenUser {
     id: string;
     name?: string | null;
     email?: string | null;
-    roles: Role[];          // array of Role objects
-    permissions?: Permission[]; // optional, for fine-grained RBAC
+    roles: string[];  
+    permissions?: Permission[];
 }
