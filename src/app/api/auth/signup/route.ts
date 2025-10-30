@@ -36,7 +36,7 @@ export async function POST(req: Request) {
             name,
             email,
             password: hashedPassword,
-            roles: ["viewer"], // 👈 Assign default role
+            roles: ["admin"], // 👈 Assign default role
         });
 
         // ✅ Return safe user object (no password)
