@@ -2,14 +2,13 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connection";
 import { Post } from "@/lib/db/models";
 
-// ✅ GET all posts
 export async function GET() {
     try {
         await connectDB();
 
         const posts = await Post.find()
-            .populate("author_id", "name email") // populate author info
-            .sort({ createdAt: -1 }); // newest first
+            .populate("author_id", "name email") 
+            .sort({ createdAt: -1 });
 
         return NextResponse.json({ success: true, data: posts }, { status: 200 });
     } catch (error) {
@@ -21,7 +20,6 @@ export async function GET() {
     }
 }
 
-// ✅ CREATE a new post
 export async function POST(req: Request) {
     try {
         await connectDB();

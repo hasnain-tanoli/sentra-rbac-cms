@@ -1,4 +1,3 @@
-// src/components/layout/DashboardLayout.tsx
 import HeaderDashboard from "./HeaderDashboard";
 import FooterDashboard from "./FooterDashboard";
 import Sidebar from "./Sidebar";

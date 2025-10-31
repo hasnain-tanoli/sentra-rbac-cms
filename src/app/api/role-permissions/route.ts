@@ -4,7 +4,6 @@ import { RolePermission } from "@/lib/db/models/rolePermission.model";
 import { Role } from "@/lib/db/models/role.model";
 import { Permission } from "@/lib/db/models/permission.model";
 
-// ✅ Assign a permission to a role
 export async function POST(req: Request) {
     try {
         await connectDB();
@@ -17,7 +16,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // Validate role and permission existence
         const [role, permission] = await Promise.all([
             Role.findById(role_id),
             Permission.findById(permission_id),
@@ -37,7 +35,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // Prevent duplicates
         const existing = await RolePermission.findOne({ role_id, permission_id });
         if (existing) {
             return NextResponse.json(
@@ -46,7 +43,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // Assign permission
         const rolePermission = await RolePermission.create({ role_id, permission_id });
 
         return NextResponse.json(
@@ -66,7 +62,6 @@ export async function POST(req: Request) {
     }
 }
 
-// ✅ Get all role-permission mappings
 export async function GET() {
     try {
         await connectDB();

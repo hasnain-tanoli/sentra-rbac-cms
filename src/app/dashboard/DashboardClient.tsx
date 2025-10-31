@@ -81,7 +81,6 @@ export function DashboardClient() {
         <p className="text-muted-foreground">Loading data...</p>
       ) : (
         <>
-          {/* Top Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
             <Card>
               <CardHeader>
@@ -109,7 +108,6 @@ export function DashboardClient() {
             </Card>
           </div>
 
-          {/* Overview Chart */}
           <Card className="mb-10">
             <CardHeader>
               <CardTitle>Overview</CardTitle>
@@ -126,7 +124,6 @@ export function DashboardClient() {
             </CardContent>
           </Card>
 
-          {/* Quick Links */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardContent>

@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connection";
 import { Role } from "@/lib/db/models/role.model";
-import { getAuthSession } from "@/lib/auth"; // ✅ Make sure this helper exists
+import { getAuthSession } from "@/lib/auth"; 
 
-// ✅ CREATE a new role (Admin only)
 export async function POST(req: Request) {
   try {
     const session = await getAuthSession();
 
-    // 🔒 Authentication check
     if (!session) {
       return NextResponse.json(
         { success: false, message: "Unauthorized. Please log in." },
@@ -16,7 +14,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 🔒 Authorization check — only admins can create roles
     if (!session.user.roles.includes("admin")) {
       return NextResponse.json(
         { success: false, message: "Forbidden. Admin access required." },
@@ -36,7 +33,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check for duplicate role title
     const existingRole = await Role.findOne({ title: title.trim() });
     if (existingRole) {
       return NextResponse.json(
@@ -67,12 +63,10 @@ export async function POST(req: Request) {
   }
 }
 
-// ✅ GET all roles (Admin only)
 export async function GET() {
   try {
     const session = await getAuthSession();
 
-    // 🔒 Authentication check
     if (!session) {
       return NextResponse.json(
         { success: false, message: "Unauthorized. Please log in." },
@@ -80,7 +74,6 @@ export async function GET() {
       );
     }
 
-    // 🔒 Authorization check — only admins can view all roles
     if (!session.user.roles.includes("admin")) {
       return NextResponse.json(
         { success: false, message: "Forbidden. Admin access required." },

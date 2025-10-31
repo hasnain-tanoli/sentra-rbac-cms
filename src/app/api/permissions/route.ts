@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connection";
 import { Permission } from "@/lib/db/models/permission.model";
 
-// ✅ CREATE a new permission
 export async function POST(req: Request) {
     try {
         await connectDB();
@@ -36,7 +35,6 @@ export async function POST(req: Request) {
     }
 }
 
-// ✅ GET all permissions
 export async function GET() {
     try {
         await connectDB();

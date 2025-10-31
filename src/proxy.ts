@@ -1,12 +1,11 @@
-// src/middleware.ts
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequestWithAuth } from "next-auth/middleware";
 
-// Helper function to check if user has at least one allowed role
+// Utility: check if user has any allowed role
 function hasRole(userRoles: string[] | undefined, allowedRoles: string[]) {
-    if (!userRoles) return false;
-    return userRoles.some(role => allowedRoles.includes(role));
+    if (!userRoles || userRoles.length === 0) return false;
+    return userRoles.some((role) => allowedRoles.includes(role.toLowerCase()));
 }
 
 export default withAuth(
@@ -15,39 +14,39 @@ export default withAuth(
         const url = req.nextUrl.clone();
         const path = req.nextUrl.pathname;
 
-        // If not logged in → redirect to login
+        // Redirect unauthenticated users
         if (!token?.user) {
             url.pathname = "/auth/login";
             return NextResponse.redirect(url);
         }
 
-        const userRoles = token.user.roles;
+        const userRoles: string[] = token.user.roles || [];
 
-        // Admin pages
-        if (path.startsWith("/admin")) {
-            if (!hasRole(userRoles, ["admin", "manager"])) {
+        // Admin-only routes
+        if (path.startsWith("/dashboard/roles") || path.startsWith("/dashboard/permissions")) {
+            if (!hasRole(userRoles, ["admin"])) {
                 url.pathname = "/unauthorized";
                 return NextResponse.redirect(url);
             }
         }
 
-        // Dashboard settings pages
-        if (path.startsWith("/dashboard/settings")) {
-            if (!hasRole(userRoles, ["admin", "manager"])) {
-                url.pathname = "/unauthorized";
-                return NextResponse.redirect(url);
-            }
-        }
-
-        // Posts management
-        if (path.startsWith("/dashboard/posts")) {
+        // Shared dashboard access: Admin, Manager, Editor
+        if (path.startsWith("/dashboard")) {
             if (!hasRole(userRoles, ["admin", "manager", "editor"])) {
                 url.pathname = "/unauthorized";
                 return NextResponse.redirect(url);
             }
         }
 
-        // Otherwise allow
+        // Optionally, restrict /admin routes (if you still use them)
+        if (path.startsWith("/admin")) {
+            if (!hasRole(userRoles, ["admin"])) {
+                url.pathname = "/unauthorized";
+                return NextResponse.redirect(url);
+            }
+        }
+
+        // All checks passed
         return NextResponse.next();
     },
     {

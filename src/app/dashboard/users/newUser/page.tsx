@@ -32,7 +32,7 @@ export default function NewUserPage() {
 
       if (data.success) {
         alert("User created successfully!");
-        router.push("/dashboard/users"); // redirect back to users list
+        router.push("/dashboard/users"); 
       } else {
         alert(data.message);
       }

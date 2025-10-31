@@ -37,7 +37,6 @@ export default function SignupPage() {
         return;
       }
 
-      // ✅ Auto-login right after signup
       const loginRes = await signIn("credentials", {
         redirect: false,
         email,

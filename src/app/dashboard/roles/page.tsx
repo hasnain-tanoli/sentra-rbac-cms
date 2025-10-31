@@ -48,7 +48,6 @@ export default function RolesPage() {
     }
   };
 
-  // Fetch users
   const fetchUsers = async () => {
     try {
       const res = await fetch("/api/users");
@@ -59,7 +58,6 @@ export default function RolesPage() {
     }
   };
 
-  // Fetch assignments
   const fetchAssignments = async () => {
     try {
       const res = await fetch("/api/user-roles");
@@ -70,7 +68,6 @@ export default function RolesPage() {
     }
   };
 
-  // Fetch permissions
   const fetchPermissions = async () => {
     try {
       const res = await fetch("/api/permissions");
@@ -81,7 +78,6 @@ export default function RolesPage() {
     }
   };
 
-  // Fetch role-permission assignments
   const fetchRolePermissions = async () => {
     try {
       const res = await fetch("/api/role-permissions");
@@ -92,7 +88,6 @@ export default function RolesPage() {
     }
   };
 
-  // Load all data
   useEffect(() => {
     async function loadData() {
       await fetchRoles();
@@ -104,7 +99,6 @@ export default function RolesPage() {
     loadData();
   }, []);
 
-  // Assign role to user
   const handleAssignRole = async () => {
     if (!selectedUser || !selectedRole) return;
 
@@ -127,7 +121,6 @@ export default function RolesPage() {
     }
   };
 
-  // Create new role
   const handleCreateRole = async () => {
     if (!newRoleTitle) return;
     try {
@@ -153,7 +146,6 @@ export default function RolesPage() {
     <DashboardLayout>
       <h1 className="text-3xl font-bold mb-6">Roles Management</h1>
 
-      {/* Create Role */}
       <div className="flex gap-2 mb-6">
         <Input
           placeholder="Role Title"
@@ -168,7 +160,6 @@ export default function RolesPage() {
         <Button onClick={handleCreateRole}>Create Role</Button>
       </div>
 
-      {/* Assign Role Dialog */}
       <Dialog>
         <DialogTrigger asChild>
           <Button className="mb-6">Assign Role to User</Button>
@@ -210,7 +201,6 @@ export default function RolesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Roles Table */}
       <div className="overflow-x-auto mt-6">
         <table className="w-full table-auto border-collapse border border-border">
           <thead>

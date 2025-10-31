@@ -34,7 +34,6 @@ export const authOptions: AuthOptions = {
     ],
 
     callbacks: {
-        // Include user data in JWT
         async jwt({ token, user }: { token: JWT & { user?: TokenUser }; user?: TokenUser }) {
             if (user) {
                 token.user = {
@@ -47,7 +46,6 @@ export const authOptions: AuthOptions = {
             return token;
         },
 
-        // Include user data in session
         async session({ session, token }: { session: Session; token: JWT & { user?: TokenUser } }) {
             if (token.user) {
                 session.user = {
@@ -61,7 +59,6 @@ export const authOptions: AuthOptions = {
             return session;
         },
 
-        // Redirect after login
         async redirect({ url, baseUrl }) {
             if (url.startsWith(baseUrl)) return url;
             return `${baseUrl}/dashboard`;
@@ -73,6 +70,6 @@ export const authOptions: AuthOptions = {
     },
 
     session: {
-        strategy: "jwt", // JWT-based session
+        strategy: "jwt",
     },
 };

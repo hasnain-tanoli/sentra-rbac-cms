@@ -6,12 +6,10 @@ import { DashboardClient } from "./DashboardClient";
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
 
-  // Redirect if not logged in
   if (!session) {
     redirect("/auth/login");
   }
 
-  // Optional: restrict access by role
   if (!session.user.roles?.includes("admin")) {
     redirect("/403");
   }

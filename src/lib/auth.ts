@@ -1,6 +1,5 @@
-// src/lib/auth.ts
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth/options"; // wherever you defined it
+import { authOptions } from "@/lib/auth/options";
 import { Session } from "next-auth";
 
 export async function getAuthSession(): Promise<Session | null> {

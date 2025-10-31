@@ -52,11 +52,11 @@ interface User {
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const [selectedUser, setSelectedUser] = useState<string>("");
-  const [selectedRole, setSelectedRole] = useState<string>("");
+  const [selectedUser, setSelectedUser] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // Fetch users and roles
+  // Fetch users + roles
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -90,18 +90,46 @@ export default function UsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: selectedUser, role_id: selectedRole }),
       });
-      const data = await res.json();
+
+      // Try to parse JSON safely
+      const text = await res.text();
+      const data = text
+        ? JSON.parse(text)
+        : { success: false, message: "Empty response" };
 
       if (data.success) {
-        await fetchData(); // refresh users to reflect role updates
+        await fetchData();
         setSelectedUser("");
         setSelectedRole("");
       } else {
-        alert(data.message);
+        alert(data.message || "Failed to assign role");
       }
     } catch (err) {
       console.error("Error assigning role:", err);
       alert("Failed to assign role");
+    }
+  };
+
+  // Delete user
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this user?")) return;
+
+    try {
+      const res = await fetch(`/api/users?id=${id}`, { method: "DELETE" });
+
+      const text = await res.text();
+      const data = text
+        ? JSON.parse(text)
+        : { success: false, message: "Empty response" };
+
+      if (data.success) {
+        setUsers((prev) => prev.filter((u) => u._id !== id));
+      } else {
+        alert(data.message || "Failed to delete user");
+      }
+    } catch (err) {
+      console.error("Failed to delete user:", err);
+      alert("Server error deleting user");
     }
   };
 
@@ -114,7 +142,6 @@ export default function UsersPage() {
         </Link>
       </div>
 
-      {/* Assign Role Dialog */}
       <Dialog>
         <DialogTrigger asChild>
           <Button className="mb-6">Assign Role to User</Button>
@@ -185,8 +212,9 @@ export default function UsersPage() {
                       {user.roles.map((r) => r.title).join(", ") || "—"}
                     </TableCell>
                     <TableCell>
-                      {user.permissions.map((p) => p.resource).join(", ") ||
-                        "—"}
+                      {[
+                        ...new Set(user.permissions.map((p) => p.resource)),
+                      ].join(", ") || "—"}
                     </TableCell>
                     <TableCell className="flex gap-2">
                       <Link href={`/dashboard/users/edit/${user._id}`}>
@@ -194,7 +222,11 @@ export default function UsersPage() {
                           Edit
                         </Button>
                       </Link>
-                      <Button variant="destructive" size="sm">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDeleteUser(user._id)}
+                      >
                         Delete
                       </Button>
                     </TableCell>

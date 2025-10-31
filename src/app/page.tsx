@@ -1,4 +1,3 @@
-// src/app/page.tsx
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { PostCard } from "@/components/posts/PostCard";
@@ -6,10 +5,9 @@ import { Post } from "@/types/post";
 
 async function getPosts(): Promise<Post[]> {
   try {
-    // Absolute URL for server-side fetch
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
     const res = await fetch(`${baseUrl}/api/posts`, {
-      cache: "no-store", // always fresh
+      cache: "no-store",
     });
 
     if (!res.ok) {
@@ -33,7 +31,6 @@ export default async function HomePage() {
       <Header />
 
       <main className="mx-auto max-w-6xl px-6 md:px-8 py-16 flex flex-col items-center">
-        {/* Hero Section */}
         <section className="text-center mb-16">
           <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
             Welcome to <span className="text-primary">Sentra</span>
@@ -44,7 +41,6 @@ export default async function HomePage() {
           </p>
         </section>
 
-        {/* Posts Section */}
         <section className="w-full">
           <h2 className="text-2xl font-semibold mb-8 text-center md:text-left">
             Latest Posts
@@ -70,7 +66,6 @@ export default async function HomePage() {
           )}
         </section>
 
-        {/* CTA Section */}
         <section className="mt-20 text-center">
           <p className="text-muted-foreground text-base">
             Want to unlock full access?

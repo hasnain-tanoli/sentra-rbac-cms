@@ -15,13 +15,12 @@ export default function Header() {
   const isLoggedIn = !!session?.user;
 
   const handleLogout = async () => {
-    await signOut({ callbackUrl: "/" }); // redirects to homepage after logout
+    await signOut({ callbackUrl: "/" });
   };
 
   return (
     <header className="w-full border-b bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        {/* Logo */}
         <Link href="/" className="flex items-center">
           <Image
             src="/Logo-with-Text.svg"
@@ -33,7 +32,6 @@ export default function Header() {
           />
         </Link>
 
-        {/* Desktop navigation */}
         <nav className="hidden md:flex items-center gap-4">
           {!isLoggedIn ? (
             <>
@@ -64,7 +62,6 @@ export default function Header() {
           )}
         </nav>
 
-        {/* Mobile navigation */}
         <div className="md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>

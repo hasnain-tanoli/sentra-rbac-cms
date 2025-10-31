@@ -5,7 +5,6 @@ export default function FooterDashboard() {
   return (
     <footer className="w-full border-t bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-6 py-8 md:flex-row">
-        {/* Logo + Name */}
         <Link href="/" className="flex items-center gap-2">
           <Image
             src="/Logo.svg"
@@ -16,7 +15,6 @@ export default function FooterDashboard() {
           />
         </Link>
 
-        {/* Links */}
         <nav className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
           <Link
             href="/privacy"
@@ -44,7 +42,6 @@ export default function FooterDashboard() {
           </Link>
         </nav>
 
-        {/* Copyright */}
         <p className="text-sm text-muted-foreground text-center md:text-right">
           © {new Date().getFullYear()} Sentra. All rights reserved.
         </p>

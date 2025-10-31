@@ -73,7 +73,6 @@ export default function PermissionsPage() {
     loadData();
   }, []);
 
-  // Assign permission to role
   const handleAssignPermission = async () => {
     if (!selectedPermission || !selectedRole) return;
 
@@ -96,7 +95,6 @@ export default function PermissionsPage() {
     }
   };
 
-  // Create a new permission
   const handleCreatePermission = async () => {
     if (!newResource || !newActions) return;
 
@@ -127,7 +125,6 @@ export default function PermissionsPage() {
       <h1 className="text-3xl font-bold mb-8">Permissions Management</h1>
 
       <div className="flex gap-4 mb-6">
-        {/* Create Permission Dialog */}
         <Dialog>
           <DialogTrigger asChild>
             <Button>Create New Permission</Button>
@@ -152,7 +149,6 @@ export default function PermissionsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Assign Permission Dialog */}
         <Dialog>
           <DialogTrigger asChild>
             <Button>Assign Permission to Role</Button>
@@ -195,7 +191,6 @@ export default function PermissionsPage() {
         </Dialog>
       </div>
 
-      {/* Permissions Table */}
       <div className="overflow-x-auto">
         <table className="w-full table-auto border-collapse border border-border">
           <thead>

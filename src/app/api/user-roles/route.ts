@@ -4,7 +4,6 @@ import { UserRole } from "@/lib/db/models/userRole.model";
 import { User } from "@/lib/db/models/user.model";
 import { Role } from "@/lib/db/models/role.model";
 
-// ✅ Assign a role to a user
 export async function POST(req: Request) {
     try {
         await connectDB();
@@ -17,7 +16,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // Check if user and role exist
         const [user, role] = await Promise.all([
             User.findById(user_id),
             Role.findById(role_id),
@@ -37,7 +35,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // Prevent duplicate assignments
         const existingAssignment = await UserRole.findOne({ user_id, role_id });
         if (existingAssignment) {
             return NextResponse.json(
@@ -46,7 +43,6 @@ export async function POST(req: Request) {
             );
         }
 
-        // Create new assignment
         const userRole = await UserRole.create({ user_id, role_id });
 
         return NextResponse.json(
@@ -66,7 +62,6 @@ export async function POST(req: Request) {
     }
 }
 
-// ✅ Get all user-role assignments
 export async function GET() {
     try {
         await connectDB();

@@ -1,4 +1,3 @@
-// types/auth.ts
 export interface Role {
     id: string;
     title: string;

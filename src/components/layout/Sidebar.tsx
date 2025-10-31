@@ -1,4 +1,3 @@
-// src/components/layout/Sidebar.tsx
 import Link from "next/link";
 import Image from "next/image";
 import { Home, FileText, Users, Key, Shield } from "lucide-react";
@@ -17,13 +16,12 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 border-r bg-background/90 p-6 hidden md:flex flex-col gap-4">
-      {/* Logo */}
       <div className="mb-8 flex justify-center">
         <Image
-          src="/Logo-with-Text.svg" // replace with your logo path
+          src="/Logo-with-Text.svg"
           alt="Sentra Logo"
-          width={180}   // adjust as needed
-          height={40}   // adjust as needed
+          width={180}   
+          height={40}
           priority
         />
       </div>

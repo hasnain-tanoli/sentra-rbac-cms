@@ -10,12 +10,14 @@ interface MongooseCache {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
 }
+declare global {
+  var mongooseCache: MongooseCache | undefined;
+}
 
-// Use a global cache so it persists across hot reloads
-let cached = (global as any).mongoose as MongooseCache;
+const cached: MongooseCache = global.mongooseCache ?? { conn: null, promise: null };
 
-if (!cached) {
-  cached = (global as any).mongoose = { conn: null, promise: null };
+if (!global.mongooseCache) {
+  global.mongooseCache = cached;
 }
 
 export async function connectDB(): Promise<typeof mongoose> {
