@@ -10,8 +10,13 @@ export default async function DashboardPage() {
     redirect("/auth/login");
   }
 
-  if (!session.user.roles?.includes("admin")) {
-    redirect("/403");
+  const hasAccess =
+    session.user.roles?.includes("super_admin") ||
+    session.user.roles?.includes("editor") ||
+    session.user.roles?.includes("author");
+
+  if (!hasAccess) {
+    redirect("/unauthorized");
   }
 
   return <DashboardClient />;

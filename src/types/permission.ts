@@ -1,6 +1,7 @@
 export interface Permission {
   _id: string;
   resource: string;
-  actions: string[];
+  action: string;
+  key: string;
   description?: string;
 }

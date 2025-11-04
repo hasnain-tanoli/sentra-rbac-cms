@@ -2,9 +2,22 @@ import { AuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { User } from "@/lib/db/models/user.model";
+import { UserRole } from "@/lib/db/models/userRole.model";
 import type { JWT } from "next-auth/jwt";
 import type { Session } from "next-auth";
 import { TokenUser } from "@/types/auth";
+import mongoose from "mongoose";
+import { connectDB } from "@/lib/db/connection";
+
+type LeanUser = {
+    _id: mongoose.Types.ObjectId;
+    name: string;
+    email: string;
+    password: string;
+    is_active: boolean;
+    created_at: Date;
+    updated_at: Date;
+};
 
 export const authOptions: AuthOptions = {
     providers: [
@@ -17,17 +30,40 @@ export const authOptions: AuthOptions = {
             async authorize(credentials): Promise<TokenUser | null> {
                 if (!credentials?.email || !credentials.password) return null;
 
-                const user = await User.findOne({ email: credentials.email }).lean();
+                await connectDB();
+
+                const user = await User.findOne({ email: credentials.email }).lean<LeanUser>();
                 if (!user) return null;
 
                 const isValid = await bcrypt.compare(credentials.password, user.password);
                 if (!isValid) return null;
 
+                const userRoles = await UserRole.aggregate([
+                    { $match: { user_id: new mongoose.Types.ObjectId(user._id) } },
+                    {
+                        $lookup: {
+                            from: 'roles',
+                            localField: 'role_id',
+                            foreignField: '_id',
+                            as: 'role'
+                        }
+                    },
+                    { $unwind: '$role' },
+                    {
+                        $project: {
+                            key: '$role.key',
+                            title: '$role.title'
+                        }
+                    }
+                ]);
+
+                const roleKeys = userRoles.map(r => r.key);
+
                 return {
                     id: user._id.toString(),
                     name: user.name,
                     email: user.email,
-                    roles: user.roles || [],
+                    roles: roleKeys,
                 };
             },
         }),

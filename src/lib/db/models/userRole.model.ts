@@ -1,28 +1,30 @@
-import mongoose, { Schema, Document, Model, Types } from "mongoose";
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUserRole extends Document {
-  user_id: Types.ObjectId;
-  role_id: Types.ObjectId;
-  assignedAt?: Date;
+  user_id: mongoose.Types.ObjectId;
+  role_id: mongoose.Types.ObjectId;
+  created_at: Date;
 }
 
-const userRoleSchema = new Schema<IUserRole>(
-  {
-    user_id: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "User reference is required"],
-    },
-    role_id: {
-      type: Schema.Types.ObjectId,
-      ref: "Role",
-      required: [true, "Role reference is required"],
-    },
+const UserRoleSchema = new Schema<IUserRole>({
+  user_id: {
+    type: Schema.Types.ObjectId,
+    ref: 'User',
+    required: true,
+    index: true
   },
-  { timestamps: { createdAt: "assignedAt" } }
-);
+  role_id: {
+    type: Schema.Types.ObjectId,
+    ref: 'Role',
+    required: true
+  }
+}, {
+  timestamps: { createdAt: 'created_at', updatedAt: false }
+});
 
-userRoleSchema.index({ user_id: 1, role_id: 1 }, { unique: true });
+UserRoleSchema.index({ user_id: 1, role_id: 1 }, { unique: true });
 
-export const UserRole: Model<IUserRole> =
-  mongoose.models.UserRole || mongoose.model<IUserRole>("UserRole", userRoleSchema);
+UserRoleSchema.index({ role_id: 1 });
+
+export const UserRole = mongoose.models.UserRole ||
+  mongoose.model<IUserRole>('UserRole', UserRoleSchema);

@@ -65,18 +65,6 @@ export default async function HomePage() {
             </div>
           )}
         </section>
-
-        <section className="mt-20 text-center">
-          <p className="text-muted-foreground text-base">
-            Want to unlock full access?
-          </p>
-          <a
-            href="/login"
-            className="inline-block mt-3 rounded-lg bg-primary text-white px-6 py-2 font-medium hover:bg-primary/90 transition"
-          >
-            Log in to see more content
-          </a>
-        </section>
       </main>
 
       <Footer />

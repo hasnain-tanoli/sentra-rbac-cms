@@ -1,41 +1,70 @@
-import mongoose, { Schema, Document, Model, Types } from "mongoose";
+// lib/db/models/Post.ts
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IPost extends Document {
   title: string;
+  slug: string;
   content: string;
-  author_id: Types.ObjectId;
-  status: "draft" | "published";
-  createdAt?: Date;
-  updatedAt?: Date;
+  author_id: mongoose.Types.ObjectId;
+  status: 'draft' | 'published';
+  created_at: Date;
+  updated_at: Date;
 }
 
-const postSchema = new Schema<IPost>(
-  {
-    title: {
-      type: String,
-      required: [true, "Title is required"],
-      trim: true,
-      minlength: [3, "Title must be at least 3 characters long"],
-      maxlength: [150, "Title cannot exceed 150 characters"],
-    },
-    content: {
-      type: String,
-      required: [true, "Content is required"],
-      minlength: [10, "Content must be at least 10 characters long"],
-    },
-    author_id: {
-      type: Schema.Types.ObjectId,
-      ref: "User",
-      required: [true, "Author is required"],
-    },
-    status: {
-      type: String,
-      enum: ["draft", "published"],
-      default: "draft",
-    },
+const PostSchema = new Schema<IPost>({
+  title: { 
+    type: String, 
+    required: true 
   },
-  { timestamps: true }
-);
+  slug: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    lowercase: true,
+    index: true 
+  },
+  content: { 
+    type: String, 
+    required: true 
+  },
+  author_id: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'User',
+    required: true,
+    index: true 
+  },
+  status: { 
+    type: String, 
+    enum: ['draft', 'published'],
+    default: 'draft',
+    index: true 
+  }
+}, { 
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+});
 
-export const Post: Model<IPost> =
-  mongoose.models.Post || mongoose.model<IPost>("Post", postSchema);
+PostSchema.index({ author_id: 1, status: 1, created_at: -1 });
+
+PostSchema.pre('save', async function(next) {
+  if (this.isNew || this.isModified('title')) {
+    const slugify = (str: string) => str
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    
+    const slug = slugify(this.title);
+    const Model = this.constructor as mongoose.Model<IPost>;
+    
+    let count = 0;
+    let uniqueSlug = slug;
+    while (await Model.findOne({ slug: uniqueSlug, _id: { $ne: this._id } })) {
+      count++;
+      uniqueSlug = `${slug}-${count}`;
+    }
+    
+    this.slug = uniqueSlug;
+  }
+  next();
+});
+
+export const Post = mongoose.models.Post || mongoose.model<IPost>('Post', PostSchema);

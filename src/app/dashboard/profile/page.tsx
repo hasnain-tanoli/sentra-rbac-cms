@@ -20,7 +20,6 @@ export default function ProfilePage() {
   const [userData, setUserData] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Map role titles to Badge variants
   const roleVariantMap: Record<
     string,
     "destructive" | "secondary" | "default" | "outline"
@@ -59,7 +58,6 @@ export default function ProfilePage() {
       <h1 className="text-3xl font-bold mb-6">User Profile</h1>
 
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Personal Information Card */}
         <Card>
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
@@ -95,7 +93,6 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        {/* Roles & Permissions Card */}
         <Card>
           <CardHeader>
             <CardTitle>Roles & Permissions</CardTitle>
@@ -104,7 +101,6 @@ export default function ProfilePage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {/* Roles */}
             <div className="mb-4">
               <p className="text-sm font-medium text-muted-foreground mb-2">
                 Roles
@@ -136,7 +132,6 @@ export default function ProfilePage() {
               )}
             </div>
 
-            {/* Permissions */}
             <div>
               <p className="text-sm font-medium text-muted-foreground mb-2">
                 Permissions
@@ -155,7 +150,7 @@ export default function ProfilePage() {
                       className="px-3 py-1 text-sm cursor-default"
                       title={perm.description || ""}
                     >
-                      {perm.resource} [{perm.actions.join(", ")}]
+                      {perm.resource} [{perm.action}]
                     </Badge>
                   ))}
                 </div>

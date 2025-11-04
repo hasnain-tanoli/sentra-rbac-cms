@@ -1,82 +1,130 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connection";
 import { RolePermission } from "@/lib/db/models/rolePermission.model";
-import { Role } from "@/lib/db/models/role.model";
-import { Permission } from "@/lib/db/models/permission.model";
+import { assignPermissionsToRole } from "@/lib/rbac/assignPermissions";
+import { hasPermission } from "@/lib/rbac/checkPermission";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth/options";
+import mongoose from "mongoose";
+
+interface ApiResponse<T = unknown> {
+  success: boolean;
+  message: string;
+  data?: T;
+}
+
+function respond<T>(
+  success: boolean,
+  message: string,
+  status: number,
+  data?: T
+): NextResponse<ApiResponse<T>> {
+  const payload: ApiResponse<T> = { success, message };
+  if (data !== undefined) payload.data = data;
+  return NextResponse.json(payload, { status });
+}
 
 export async function POST(req: Request) {
-    try {
-        await connectDB();
-        const { role_id, permission_id } = await req.json();
+  try {
+    const session = await getServerSession(authOptions);
 
-        if (!role_id || !permission_id) {
-            return NextResponse.json(
-                { success: false, message: "role_id and permission_id are required." },
-                { status: 400 }
-            );
-        }
-
-        const [role, permission] = await Promise.all([
-            Role.findById(role_id),
-            Permission.findById(permission_id),
-        ]);
-
-        if (!role) {
-            return NextResponse.json(
-                { success: false, message: "Role not found." },
-                { status: 404 }
-            );
-        }
-
-        if (!permission) {
-            return NextResponse.json(
-                { success: false, message: "Permission not found." },
-                { status: 404 }
-            );
-        }
-
-        const existing = await RolePermission.findOne({ role_id, permission_id });
-        if (existing) {
-            return NextResponse.json(
-                { success: false, message: "This permission is already assigned to the role." },
-                { status: 409 }
-            );
-        }
-
-        const rolePermission = await RolePermission.create({ role_id, permission_id });
-
-        return NextResponse.json(
-            {
-                success: true,
-                message: "Permission assigned to role successfully.",
-                data: rolePermission,
-            },
-            { status: 201 }
-        );
-    } catch (error) {
-        console.error("POST /api/role-permissions error:", error);
-        return NextResponse.json(
-            { success: false, message: "Failed to assign permission to role." },
-            { status: 500 }
-        );
+    if (!session?.user) {
+      return respond(false, "Unauthorized. Please log in.", 401);
     }
+
+    const canAssign = await hasPermission(session.user.id, 'roles', 'update');
+    if (!canAssign) {
+      return respond(false, "Forbidden.", 403);
+    }
+
+    await connectDB();
+
+    const { role_id, permission_keys } = await req.json();
+
+    if (!role_id || !Array.isArray(permission_keys) || permission_keys.length === 0) {
+      return respond(false, "role_id and permission_keys array are required.", 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(role_id)) {
+      return respond(false, "Invalid role ID", 400);
+    }
+
+    const assignedCount = await assignPermissionsToRole(role_id, permission_keys);
+
+    return respond(
+      true,
+      `${assignedCount} permission(s) assigned to role successfully.`,
+      201,
+      { assignedCount }
+    );
+  } catch (error) {
+    console.error("POST /api/role-permissions error:", error);
+    const err = error as Error;
+    return respond(false, err.message || "Failed to assign permissions to role.", 500);
+  }
 }
 
 export async function GET() {
-    try {
-        await connectDB();
+  try {
+    const session = await getServerSession(authOptions);
 
-        const mappings = await RolePermission.find()
-            .populate("role_id", "title description")
-            .populate("permission_id", "resource actions description")
-            .sort({ createdAt: -1 });
-
-        return NextResponse.json({ success: true, data: mappings }, { status: 200 });
-    } catch (error) {
-        console.error("GET /api/role-permissions error:", error);
-        return NextResponse.json(
-            { success: false, message: "Failed to fetch role-permission mappings." },
-            { status: 500 }
-        );
+    if (!session?.user) {
+      return respond(false, "Unauthorized. Please log in.", 401);
     }
+
+    const canRead = await hasPermission(session.user.id, 'roles', 'read');
+    if (!canRead) {
+      return respond(false, "Forbidden.", 403);
+    }
+
+    await connectDB();
+
+    const mappings = await RolePermission.find()
+      .populate("role_id", "title key description")
+      .populate("permission_id", "resource action key description")
+      .sort({ created_at: -1 });
+
+    return respond(true, "Role-permission mappings fetched successfully.", 200, mappings);
+  } catch (error) {
+    console.error("GET /api/role-permissions error:", error);
+    return respond(false, "Failed to fetch role-permission mappings.", 500);
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user) {
+      return respond(false, "Unauthorized. Please log in.", 401);
+    }
+
+    const canDelete = await hasPermission(session.user.id, 'roles', 'update');
+    if (!canDelete) {
+      return respond(false, "Forbidden.", 403);
+    }
+
+    await connectDB();
+
+    const { role_id, permission_id } = await req.json();
+
+    if (!role_id || !permission_id) {
+      return respond(false, "role_id and permission_id are required.", 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(role_id) || !mongoose.Types.ObjectId.isValid(permission_id)) {
+      return respond(false, "Invalid role_id or permission_id", 400);
+    }
+
+    const result = await RolePermission.findOneAndDelete({ role_id, permission_id });
+
+    if (!result) {
+      return respond(false, "Role-permission mapping not found", 404);
+    }
+
+    return respond(true, "Permission removed from role successfully.", 200);
+  } catch (error) {
+    console.error("DELETE /api/role-permissions error:", error);
+    return respond(false, "Failed to remove permission from role.", 500);
+  }
 }

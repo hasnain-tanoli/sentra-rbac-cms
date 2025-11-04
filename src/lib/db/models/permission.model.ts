@@ -1,39 +1,53 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+// lib/db/models/Permission.ts
+import mongoose, { Schema, Document } from 'mongoose';
 
-export type PermissionAction = "create" | "read" | "update" | "delete";
+export const ACTIONS = ['create', 'read', 'update', 'delete'] as const;
+export const RESOURCES = ['users', 'posts', 'roles', 'permissions'] as const;
+
+export type Action = typeof ACTIONS[number];
+export type Resource = typeof RESOURCES[number];
 
 export interface IPermission extends Document {
-  resource: string;
-  actions: PermissionAction[];
-  description?: string;
-  createdAt?: Date;
-  updatedAt?: Date;
+  resource: Resource;
+  action: Action;
+  key: string;
+  description: string;
+  created_at: Date;
 }
 
-const permissionSchema = new Schema<IPermission>(
-  {
-    resource: {
-      type: String,
-      required: [true, "Resource name is required"],
-      trim: true,
-      lowercase: true,
-    },
-    actions: {
-      type: [String],
-      enum: ["create", "read", "update", "delete"],
-      validate: {
-        validator: (arr: string[]) => arr.length > 0,
-        message: "At least one action is required",
-      },
-    },
-    description: {
-      type: String,
-      trim: true,
-      maxlength: [200, "Description cannot exceed 200 characters"],
-    },
+const PermissionSchema = new Schema<IPermission>({
+  resource: {
+    type: String,
+    required: true,
+    enum: RESOURCES,
+    index: true
   },
-  { timestamps: true }
-);
+  action: {
+    type: String,
+    required: true,
+    enum: ACTIONS,
+    index: true
+  },
+  key: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
+  },
+  description: String
+}, {
+  timestamps: { createdAt: 'created_at', updatedAt: false }
+});
 
-export const Permission: Model<IPermission> =
-  mongoose.models.Permission || mongoose.model<IPermission>("Permission", permissionSchema);
+PermissionSchema.index({ resource: 1, action: 1 }, { unique: true });
+
+PermissionSchema.pre('save', function (next) {
+  this.key = `${this.resource}_${this.action}`;
+  if (!this.description) {
+    this.description = `${this.action.toUpperCase()} ${this.resource}`;
+  }
+  next();
+});
+
+export const Permission = mongoose.models.Permission ||
+  mongoose.model<IPermission>('Permission', PermissionSchema);

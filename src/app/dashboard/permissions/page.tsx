@@ -13,9 +13,6 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  Input,
-} from "@/components/ui/input";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -28,17 +25,14 @@ export default function PermissionsPage() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [assignments, setAssignments] = useState<RolePermission[]>([]);
-  const [selectedPermission, setSelectedPermission] = useState<string>("");
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [selectedRole, setSelectedRole] = useState<string>("");
-
-  const [newResource, setNewResource] = useState<string>("");
-  const [newActions, setNewActions] = useState<string>("");
 
   const fetchPermissions = async () => {
     try {
       const res = await fetch("/api/permissions");
       const data = await res.json();
-      if (data.success) setPermissions(data.data);
+      if (data.success) setPermissions(data.data || []);
     } catch (err) {
       console.error("Error fetching permissions:", err);
     }
@@ -48,7 +42,7 @@ export default function PermissionsPage() {
     try {
       const res = await fetch("/api/roles");
       const data = await res.json();
-      if (data.success) setRoles(data.data);
+      if (data.success) setRoles(data.data || []);
     } catch (err) {
       console.error("Error fetching roles:", err);
     }
@@ -58,7 +52,7 @@ export default function PermissionsPage() {
     try {
       const res = await fetch("/api/role-permissions");
       const data = await res.json();
-      if (data.success) setAssignments(data.data);
+      if (data.success) setAssignments(data.data || []);
     } catch (err) {
       console.error("Error fetching role-permissions:", err);
     }
@@ -73,51 +67,44 @@ export default function PermissionsPage() {
     loadData();
   }, []);
 
-  const handleAssignPermission = async () => {
-    if (!selectedPermission || !selectedRole) return;
+  const handleAssignPermissions = async () => {
+    if (!selectedRole || selectedPermissions.length === 0) {
+      alert("Please select a role and at least one permission");
+      return;
+    }
 
     try {
       const res = await fetch("/api/role-permissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role_id: selectedRole, permission_id: selectedPermission }),
+        body: JSON.stringify({
+          role_id: selectedRole,
+          permission_keys: selectedPermissions,
+        }),
       });
       const data = await res.json();
       if (data.success) {
+        alert(
+          `${data.data.assignedCount} permission(s) assigned successfully!`
+        );
         fetchAssignments();
-        setSelectedPermission("");
+        setSelectedPermissions([]);
         setSelectedRole("");
       } else {
         alert(data.message);
       }
     } catch (err) {
-      console.error("Error assigning permission:", err);
+      console.error("Error assigning permissions:", err);
+      alert("Failed to assign permissions");
     }
   };
 
-  const handleCreatePermission = async () => {
-    if (!newResource || !newActions) return;
-
-    try {
-      const res = await fetch("/api/permissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resource: newResource,
-          actions: newActions.split(",").map((a) => a.trim()),
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        fetchPermissions();
-        setNewResource("");
-        setNewActions("");
-      } else {
-        alert(data.message);
-      }
-    } catch (err) {
-      console.error("Error creating permission:", err);
-    }
+  const togglePermission = (permKey: string) => {
+    setSelectedPermissions((prev) =>
+      prev.includes(permKey)
+        ? prev.filter((k) => k !== permKey)
+        : [...prev, permKey]
+    );
   };
 
   return (
@@ -127,35 +114,11 @@ export default function PermissionsPage() {
       <div className="flex gap-4 mb-6">
         <Dialog>
           <DialogTrigger asChild>
-            <Button>Create New Permission</Button>
+            <Button>Assign Permissions to Role</Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Create Permission</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col gap-4 mt-4">
-              <Input
-                placeholder="Resource name (e.g., posts)"
-                value={newResource}
-                onChange={(e) => setNewResource(e.target.value)}
-              />
-              <Input
-                placeholder="Actions (comma separated, e.g., create,read,update,delete)"
-                value={newActions}
-                onChange={(e) => setNewActions(e.target.value)}
-              />
-              <Button onClick={handleCreatePermission}>Create</Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>Assign Permission to Role</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Assign Permission</DialogTitle>
+              <DialogTitle>Assign Permissions to Role</DialogTitle>
             </DialogHeader>
 
             <div className="flex flex-col gap-4 mt-4">
@@ -164,28 +127,50 @@ export default function PermissionsPage() {
                   <SelectValue placeholder="Select Role" />
                 </SelectTrigger>
                 <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role._id} value={role._id}>
-                      {role.title}
-                    </SelectItem>
-                  ))}
+                  {roles
+                    .filter((role) => role && role._id)
+                    .map((role) => (
+                      <SelectItem key={role._id} value={role._id}>
+                        {role.title}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
 
-              <Select onValueChange={setSelectedPermission} value={selectedPermission}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select Permission" />
-                </SelectTrigger>
-                <SelectContent>
-                  {permissions.map((perm) => (
-                    <SelectItem key={perm._id} value={perm._id}>
-                      {perm.resource} ({perm.actions.join(", ")})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="border rounded-md p-4 max-h-64 overflow-y-auto">
+                <p className="text-sm font-medium mb-3">
+                  Select Permissions ({selectedPermissions.length} selected):
+                </p>
+                <div className="space-y-2">
+                  {permissions
+                    .filter((perm) => perm && perm._id && perm.key)
+                    .map((perm) => (
+                      <label
+                        key={perm._id}
+                        className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/50 px-2 rounded"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedPermissions.includes(perm.key)}
+                          onChange={() => togglePermission(perm.key)}
+                          className="rounded"
+                        />
+                        <span className="text-sm">
+                          <span className="font-medium">{perm.resource}</span>{" "}
+                          <span className="text-muted-foreground">→</span>{" "}
+                          <span className="text-primary">{perm.action}</span>
+                        </span>
+                      </label>
+                    ))}
+                </div>
+              </div>
 
-              <Button onClick={handleAssignPermission}>Assign</Button>
+              <Button
+                onClick={handleAssignPermissions}
+                disabled={!selectedRole || selectedPermissions.length === 0}
+              >
+                Assign {selectedPermissions.length} Permission(s)
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -195,24 +180,49 @@ export default function PermissionsPage() {
         <table className="w-full table-auto border-collapse border border-border">
           <thead>
             <tr className="bg-muted/20">
-              <th className="border border-border px-4 py-2 text-left">Permission</th>
-              <th className="border border-border px-4 py-2 text-left">Actions</th>
-              <th className="border border-border px-4 py-2 text-left">Assigned Roles</th>
+              <th className="border border-border px-4 py-2 text-left">
+                Resource
+              </th>
+              <th className="border border-border px-4 py-2 text-left">
+                Action
+              </th>
+              <th className="border border-border px-4 py-2 text-left">Key</th>
+              <th className="border border-border px-4 py-2 text-left">
+                Assigned Roles
+              </th>
             </tr>
           </thead>
           <tbody>
-            {permissions.map((perm) => (
-              <tr key={perm._id} className="hover:bg-muted/10">
-                <td className="border border-border px-4 py-2">{perm.resource}</td>
-                <td className="border border-border px-4 py-2">{perm.actions.join(", ")}</td>
-                <td className="border border-border px-4 py-2">
-                  {assignments
-                    .filter((a) => a.permission_id._id === perm._id)
-                    .map((a) => a.role_id.title)
-                    .join(", ") || "-"}
-                </td>
-              </tr>
-            ))}
+            {permissions
+              .filter((perm) => perm && perm._id)
+              .map((perm) => (
+                <tr key={perm._id} className="hover:bg-muted/10">
+                  <td className="border border-border px-4 py-2 capitalize">
+                    {perm.resource}
+                  </td>
+                  <td className="border border-border px-4 py-2 capitalize">
+                    {perm.action}
+                  </td>
+                  <td className="border border-border px-4 py-2">
+                    <code className="text-xs bg-muted px-2 py-1 rounded">
+                      {perm.key}
+                    </code>
+                  </td>
+                  <td className="border border-border px-4 py-2">
+                    {assignments
+                      .filter(
+                        (a) =>
+                          a &&
+                          a.permission_id &&
+                          a.permission_id._id === perm._id &&
+                          a.role_id &&
+                          a.role_id.title
+                      )
+                      .map((a) => a.role_id.title)
+                      .join(", ") || "—"}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

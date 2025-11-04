@@ -1,30 +1,32 @@
-import mongoose, { Schema, Document, Model, Types } from "mongoose";
+// lib/db/models/RolePermission.ts
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IRolePermission extends Document {
-  role_id: Types.ObjectId;
-  permission_id: Types.ObjectId;
-  createdAt?: Date;
-  updatedAt?: Date;
+  role_id: mongoose.Types.ObjectId;
+  permission_id: mongoose.Types.ObjectId;
+  created_at: Date;
 }
 
-const rolePermissionSchema = new Schema<IRolePermission>(
-  {
-    role_id: {
-      type: Schema.Types.ObjectId,
-      ref: "Role",
-      required: [true, "Role reference is required"],
-    },
-    permission_id: {
-      type: Schema.Types.ObjectId,
-      ref: "Permission",
-      required: [true, "Permission reference is required"],
-    },
+const RolePermissionSchema = new Schema<IRolePermission>({
+  role_id: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'Role',
+    required: true,
+    index: true
   },
-  { timestamps: true }
-);
+  permission_id: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'Permission',
+    required: true,
+    index: true
+  }
+}, { 
+  timestamps: { createdAt: 'created_at', updatedAt: false } 
+});
 
-rolePermissionSchema.index({ role_id: 1, permission_id: 1 }, { unique: true });
+RolePermissionSchema.index({ role_id: 1, permission_id: 1 }, { unique: true });
 
-export const RolePermission: Model<IRolePermission> =
-  mongoose.models.RolePermission ||
-  mongoose.model<IRolePermission>("RolePermission", rolePermissionSchema);
+RolePermissionSchema.index({ permission_id: 1 });
+
+export const RolePermission = mongoose.models.RolePermission || 
+  mongoose.model<IRolePermission>('RolePermission', RolePermissionSchema);

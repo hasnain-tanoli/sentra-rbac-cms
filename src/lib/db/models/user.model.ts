@@ -1,46 +1,44 @@
-import mongoose, { Schema, Document, Model } from "mongoose";
+// lib/db/models/User.ts
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUser extends Document {
-  _id: string;           // string for compatibility with NextAuth
   name: string;
   email: string;
   password: string;
-  roles: string[];       // array of role IDs or role names
-  createdAt?: Date;
-  updatedAt?: Date;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
 }
 
-const userSchema = new Schema<IUser>(
-  {
-    name: {
-      type: String,
-      required: [true, "Name is required"],
-      trim: true,
-      minlength: [2, "Name must be at least 2 characters long"],
-      maxlength: [100, "Name cannot exceed 100 characters"],
-      match: [/^[A-Za-z ]+$/, "Name must contain only alphabets and spaces"],
-    },
-    email: {
-      type: String,
-      required: [true, "Email is required"],
-      unique: true,
-      lowercase: true,
-      trim: true,
-      match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email address"],
-    },
-    password: {
-      type: String,
-      required: [true, "Password is required"],
-      minlength: [8, "Password must be at least 8 characters long"],
-    },
-    roles: {
-      type: [String],
-      default: [], // default to empty roles
-    },
+const UserSchema = new Schema<IUser>({
+  name: { 
+    type: String, 
+    required: true,
+    trim: true,
+    minlength: 2,
+    maxlength: 50
   },
-  { timestamps: true }
-);
+  email: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    lowercase: true,
+    trim: true,
+    index: true,
+    match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  },
+  password: { 
+    type: String, 
+    required: true,
+    minlength: 6
+  },
+  is_active: {
+    type: Boolean,
+    default: true,
+    index: true
+  }
+}, { 
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+});
 
-// This ensures mongoose uses existing model if already compiled
-export const User: Model<IUser> =
-  mongoose.models.User || mongoose.model<IUser>("User", userSchema);
+export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

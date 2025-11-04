@@ -78,6 +78,12 @@ export default function EditUserPage({
       return;
     }
 
+    // ✅ FIX: Convert selected role IDs to role keys before sending
+    const roleKeys = selectedRoles.map((roleId) => {
+      const role = roles.find((r) => r._id === roleId);
+      return role ? role.key : "";
+    }).filter(key => key !== ""); // Filter out any empty keys
+
     setLoading(true);
     try {
       const res = await fetch("/api/users", {
@@ -87,7 +93,7 @@ export default function EditUserPage({
           id,
           name,
           email,
-          roleIds: selectedRoles,
+          role_keys: roleKeys, // Pass role_keys instead of roleIds
         }),
       });
 

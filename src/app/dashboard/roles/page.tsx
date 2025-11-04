@@ -37,12 +37,11 @@ export default function RolesPage() {
   const [newRoleTitle, setNewRoleTitle] = useState<string>("");
   const [newRoleDesc, setNewRoleDesc] = useState<string>("");
 
-  // Fetch roles
   const fetchRoles = async () => {
     try {
       const res = await fetch("/api/roles");
       const data = await res.json();
-      if (data.success) setRoles(data.data);
+      if (data.success) setRoles(data.data || []);
     } catch (err) {
       console.error("Error fetching roles:", err);
     }
@@ -52,7 +51,7 @@ export default function RolesPage() {
     try {
       const res = await fetch("/api/users");
       const data = await res.json();
-      if (data.success) setUsers(data.data);
+      if (data.success) setUsers(data.data || []);
     } catch (err) {
       console.error("Error fetching users:", err);
     }
@@ -62,7 +61,7 @@ export default function RolesPage() {
     try {
       const res = await fetch("/api/user-roles");
       const data = await res.json();
-      if (data.success) setAssignments(data.data);
+      if (data.success) setAssignments(data.data || []);
     } catch (err) {
       console.error("Error fetching assignments:", err);
     }
@@ -72,7 +71,7 @@ export default function RolesPage() {
     try {
       const res = await fetch("/api/permissions");
       const data = await res.json();
-      if (data.success) setPermissions(data.data);
+      if (data.success) setPermissions(data.data || []);
     } catch (err) {
       console.error("Error fetching permissions:", err);
     }
@@ -82,20 +81,21 @@ export default function RolesPage() {
     try {
       const res = await fetch("/api/role-permissions");
       const data = await res.json();
-      if (data.success) setRolePermissions(data.data);
+      if (data.success) setRolePermissions(data.data || []);
     } catch (err) {
       console.error("Error fetching role-permissions:", err);
     }
   };
 
   useEffect(() => {
-    async function loadData() {
+    const loadData = async () => {
       await fetchRoles();
       await fetchUsers();
       await fetchAssignments();
       await fetchPermissions();
       await fetchRolePermissions();
-    }
+    };
+
     loadData();
   }, []);
 
@@ -122,15 +122,23 @@ export default function RolesPage() {
   };
 
   const handleCreateRole = async () => {
-    if (!newRoleTitle) return;
+    if (!newRoleTitle) {
+      alert("Role title is required");
+      return;
+    }
+
     try {
       const res = await fetch("/api/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: newRoleTitle, description: newRoleDesc }),
+        body: JSON.stringify({
+          title: newRoleTitle,
+          description: newRoleDesc,
+        }),
       });
       const data = await res.json();
       if (data.success) {
+        alert("Role created successfully!");
         fetchRoles();
         setNewRoleTitle("");
         setNewRoleDesc("");
@@ -139,6 +147,7 @@ export default function RolesPage() {
       }
     } catch (err) {
       console.error("Error creating role:", err);
+      alert("Failed to create role");
     }
   };
 
@@ -175,11 +184,13 @@ export default function RolesPage() {
                 <SelectValue placeholder="Select User" />
               </SelectTrigger>
               <SelectContent>
-                {users.map((user) => (
-                  <SelectItem key={user._id} value={user._id}>
-                    {user.name} ({user.email})
-                  </SelectItem>
-                ))}
+                {users
+                  .filter((user) => user && user._id)
+                  .map((user) => (
+                    <SelectItem key={user._id} value={user._id}>
+                      {user.name} ({user.email})
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
 
@@ -188,11 +199,13 @@ export default function RolesPage() {
                 <SelectValue placeholder="Select Role" />
               </SelectTrigger>
               <SelectContent>
-                {roles.map((role) => (
-                  <SelectItem key={role._id} value={role._id}>
-                    {role.title}
-                  </SelectItem>
-                ))}
+                {roles
+                  .filter((role) => role && role._id)
+                  .map((role) => (
+                    <SelectItem key={role._id} value={role._id}>
+                      {role.title}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
 
@@ -218,26 +231,49 @@ export default function RolesPage() {
             </tr>
           </thead>
           <tbody>
-            {roles.map((role) => (
-              <tr key={role._id} className="hover:bg-muted/10">
-                <td className="border border-border px-4 py-2">{role.title}</td>
-                <td className="border border-border px-4 py-2">
-                  {role.description}
-                </td>
-                <td className="border border-border px-4 py-2">
-                  {assignments
-                    .filter((a) => a.role_id._id === role._id)
-                    .map((a) => a.user_id.name)
-                    .join(", ") || "-"}
-                </td>
-                <td className="border border-border px-4 py-2">
-                  {rolePermissions
-                    .filter((rp) => rp.role_id._id === role._id)
-                    .map((rp) => rp.permission_id.resource)
-                    .join(", ") || "-"}
-                </td>
-              </tr>
-            ))}
+            {roles
+              .filter((role) => role && role._id)
+              .map((role) => (
+                <tr key={role._id} className="hover:bg-muted/10">
+                  <td className="border border-border px-4 py-2">
+                    {role.title}
+                  </td>
+                  <td className="border border-border px-4 py-2">
+                    {role.description}
+                  </td>
+                  <td className="border border-border px-4 py-2">
+                    {assignments
+                      .filter(
+                        (a) =>
+                          a &&
+                          a.role_id &&
+                          a.role_id._id === role._id &&
+                          a.user_id &&
+                          a.user_id._id &&
+                          a.user_id.name
+                      )
+                      .map((a) => a.user_id.name)
+                      .join(", ") || "-"}
+                  </td>
+                  <td className="border border-border px-4 py-2">
+                    {rolePermissions
+                      .filter(
+                        (rp) =>
+                          rp &&
+                          rp.role_id &&
+                          rp.role_id._id === role._id &&
+                          rp.permission_id &&
+                          rp.permission_id.resource &&
+                          rp.permission_id.action
+                      )
+                      .map(
+                        (rp) =>
+                          `${rp.permission_id.resource}:${rp.permission_id.action}`
+                      )
+                      .join(", ") || "-"}
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>

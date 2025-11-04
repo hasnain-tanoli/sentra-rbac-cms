@@ -32,7 +32,7 @@ export default function NewUserPage() {
 
       if (data.success) {
         alert("User created successfully!");
-        router.push("/dashboard/users"); 
+        router.push("/dashboard/users");
       } else {
         alert(data.message);
       }
@@ -67,7 +67,10 @@ export default function NewUserPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
           <div className="flex justify-between mt-4">
-            <Button variant="outline" onClick={() => router.push("/dashboard/users")}>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/dashboard/users")}
+            >
               Cancel
             </Button>
             <Button onClick={handleCreateUser} disabled={loading}>

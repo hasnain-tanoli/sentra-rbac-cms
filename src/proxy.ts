@@ -2,10 +2,9 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequestWithAuth } from "next-auth/middleware";
 
-// Utility: check if user has any allowed role
 function hasRole(userRoles: string[] | undefined, allowedRoles: string[]) {
     if (!userRoles || userRoles.length === 0) return false;
-    return userRoles.some((role) => allowedRoles.includes(role.toLowerCase()));
+    return userRoles.some((role) => allowedRoles.includes(role));
 }
 
 export default withAuth(
@@ -14,7 +13,6 @@ export default withAuth(
         const url = req.nextUrl.clone();
         const path = req.nextUrl.pathname;
 
-        // Redirect unauthenticated users
         if (!token?.user) {
             url.pathname = "/auth/login";
             return NextResponse.redirect(url);
@@ -22,31 +20,20 @@ export default withAuth(
 
         const userRoles: string[] = token.user.roles || [];
 
-        // Admin-only routes
         if (path.startsWith("/dashboard/roles") || path.startsWith("/dashboard/permissions")) {
-            if (!hasRole(userRoles, ["admin"])) {
+            if (!hasRole(userRoles, ["super_admin"])) {
                 url.pathname = "/unauthorized";
                 return NextResponse.redirect(url);
             }
         }
 
-        // Shared dashboard access: Admin, Manager, Editor
         if (path.startsWith("/dashboard")) {
-            if (!hasRole(userRoles, ["admin", "manager", "editor"])) {
+            if (!hasRole(userRoles, ["super_admin", "editor", "author"])) {
                 url.pathname = "/unauthorized";
                 return NextResponse.redirect(url);
             }
         }
 
-        // Optionally, restrict /admin routes (if you still use them)
-        if (path.startsWith("/admin")) {
-            if (!hasRole(userRoles, ["admin"])) {
-                url.pathname = "/unauthorized";
-                return NextResponse.redirect(url);
-            }
-        }
-
-        // All checks passed
         return NextResponse.next();
     },
     {
@@ -57,5 +44,5 @@ export default withAuth(
 );
 
 export const config = {
-    matcher: ["/dashboard/:path*", "/admin/:path*"],
+    matcher: ["/dashboard/:path*"],
 };
