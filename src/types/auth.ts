@@ -8,10 +8,3 @@ export interface Permission {
     resource: string;
     action: string;
 }
-
-export type TokenUser = {
-    id: string;
-    name: string;
-    email: string;
-    roles: string[];
-};
