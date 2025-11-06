@@ -19,7 +19,6 @@ function respond<T>(
     return NextResponse.json(payload, { status });
 }
 
-// POST - Create new permission
 export async function POST(req: Request) {
     try {
         await connectDB();
@@ -35,7 +34,6 @@ export async function POST(req: Request) {
             return respond(false, "Resource and action are required", 400);
         }
 
-        // Normalize to lowercase if you want case-insensitive inputs
         const resourceNormalized = resource.toLowerCase() as Resource;
         const actionNormalized = action.toLowerCase() as Action;
 
@@ -71,7 +69,6 @@ export async function POST(req: Request) {
     }
 }
 
-// GET - List all permissions OR get schema
 export async function GET(req: Request) {
     try {
         await connectDB();

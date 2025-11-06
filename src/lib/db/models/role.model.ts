@@ -1,4 +1,3 @@
-// lib/db/models/role.model.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IRole extends Document {
@@ -17,7 +16,7 @@ const RoleSchema = new Schema<IRole>({
   },
   key: {
     type: String,
-    required: false, // Changed to false since it's auto-generated
+    required: false,
     unique: true,
     lowercase: true,
     index: true,
@@ -28,9 +27,7 @@ const RoleSchema = new Schema<IRole>({
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });
 
-// Pre-save hook to auto-generate key from title
 RoleSchema.pre('save', async function (next) {
-  // Always generate key if it doesn't exist or if title changed
   if (!this.key || this.isModified('title')) {
     const keyify = (str: string) => str
       .toLowerCase()
@@ -43,7 +40,6 @@ RoleSchema.pre('save', async function (next) {
     let count = 0;
     let uniqueKey = baseKey;
 
-    // Ensure uniqueness by checking existing keys
     while (await Model.findOne({ key: uniqueKey, _id: { $ne: this._id } })) {
       count++;
       uniqueKey = `${baseKey}_${count}`;

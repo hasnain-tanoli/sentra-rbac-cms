@@ -244,7 +244,6 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <>
-            {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {canReadUsers && (
                 <Card>
@@ -317,7 +316,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Charts */}
             <div className="grid gap-6 md:grid-cols-2">
               {(canReadUsers ||
                 canReadPosts ||
@@ -380,7 +378,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Recent Posts */}
             {canReadPosts && recentPosts.length > 0 && (
               <Card>
                 <CardHeader>
@@ -421,7 +418,6 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            {/* Quick Access */}
             <div>
               <h2 className="text-xl font-semibold mb-4">Quick Access</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

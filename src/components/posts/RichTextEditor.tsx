@@ -1,4 +1,3 @@
-// components/posts/RichTextEditor.tsx
 "use client";
 
 import { useEditor, EditorContent } from "@tiptap/react";
@@ -31,7 +30,7 @@ export function RichTextEditor({
     extensions: [StarterKit],
     content,
     editable: !disabled,
-    immediatelyRender: false, // Add this line to fix SSR
+    immediatelyRender: false,
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },

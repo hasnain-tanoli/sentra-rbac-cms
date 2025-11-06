@@ -23,15 +23,14 @@ function respond<T>(
   return NextResponse.json(payload, { status });
 }
 
-// Helper function to generate slug
 function slugify(str: string): string {
   return str
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-')           // Replace spaces with -
-    .replace(/-+/g, '-')            // Replace multiple - with single -
-    .replace(/^-+|-+$/g, '');       // Remove leading/trailing -
+    .replace(/[^a-z0-9\s-]/g, '') 
+    .replace(/\s+/g, '-')     
+    .replace(/-+/g, '-')      
+    .replace(/^-+|-+$/g, '');  
 }
 
 export async function GET() {
@@ -70,10 +69,8 @@ export async function POST(req: Request) {
       return respond(false, "Title and content are required", 400);
     }
 
-    // Generate base slug from title
     const baseSlug = slugify(title);
 
-    // Check for existing slugs and make unique if necessary
     let slug = baseSlug;
     let count = 0;
 
@@ -82,7 +79,6 @@ export async function POST(req: Request) {
       slug = `${baseSlug}-${count}`;
     }
 
-    // Create new post with generated slug
     const newPost = new Post({
       title,
       slug,

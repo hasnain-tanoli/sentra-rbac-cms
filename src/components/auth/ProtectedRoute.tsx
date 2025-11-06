@@ -1,4 +1,3 @@
-// components/auth/ProtectedRoute.tsx
 "use client";
 
 import {
@@ -25,12 +24,10 @@ export function ProtectedRoute({
   requireAll = false,
   fallback,
 }: ProtectedRouteProps) {
-  // Call hooks at the top level
   const hasSinglePermission = useHasPermission(requiredPermission || "");
   const hasAnyPermissions = useHasAnyPermission(requiredPermissions || []);
   const hasAllPermissions = useHasAllPermissions(requiredPermissions || []);
 
-  // Default fallback
   const defaultFallback = (
     <Alert variant="destructive">
       <AlertCircle className="h-4 w-4" />
@@ -42,7 +39,6 @@ export function ProtectedRoute({
 
   const displayFallback = fallback || defaultFallback;
 
-  // Single permission check
   if (requiredPermission) {
     if (!hasSinglePermission) {
       return <>{displayFallback}</>;
@@ -50,7 +46,6 @@ export function ProtectedRoute({
     return <>{children}</>;
   }
 
-  // Multiple permissions check
   if (requiredPermissions && requiredPermissions.length > 0) {
     if (requireAll) {
       if (!hasAllPermissions) {

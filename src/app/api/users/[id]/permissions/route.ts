@@ -1,4 +1,3 @@
-// app/api/users/[id]/permissions/route.ts
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
@@ -35,9 +34,7 @@ export async function GET(
 
         const { id } = await params;
 
-        // Users can view their own permissions, or if they have users:read permission
         if (session.user.id !== id) {
-            // Import dynamically to avoid circular dependencies
             const { hasPermission } = await import("@/lib/rbac/checkPermission");
             await connectDB();
 

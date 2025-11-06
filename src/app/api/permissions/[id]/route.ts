@@ -21,7 +21,6 @@ function respond<T>(
     return NextResponse.json(payload, { status });
 }
 
-// GET - Get single permission by ID
 export async function GET(
     req: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -29,7 +28,7 @@ export async function GET(
     try {
         await connectDB();
 
-        const { id } = await params; // Await params first
+        const { id } = await params;
 
         if (!id || !mongoose.Types.ObjectId.isValid(id)) {
             return respond(false, "Invalid permission ID", 400);
@@ -48,7 +47,6 @@ export async function GET(
     }
 }
 
-// PUT - Update permission (only description can be updated)
 export async function PUT(
     req: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -56,7 +54,7 @@ export async function PUT(
     try {
         await connectDB();
 
-        const { id } = await params; // Await params first
+        const { id } = await params;
 
         if (!id || !mongoose.Types.ObjectId.isValid(id)) {
             return respond(false, "Invalid permission ID", 400);
@@ -82,7 +80,6 @@ export async function PUT(
     }
 }
 
-// DELETE - Delete permission and remove all role assignments
 export async function DELETE(
     req: Request,
     { params }: { params: Promise<{ id: string }> }
@@ -90,7 +87,7 @@ export async function DELETE(
     try {
         await connectDB();
 
-        const { id } = await params; // Await params first
+        const { id } = await params;
 
         if (!id || !mongoose.Types.ObjectId.isValid(id)) {
             return respond(false, "Invalid permission ID", 400);
@@ -101,12 +98,10 @@ export async function DELETE(
             return respond(false, "Permission not found", 404);
         }
 
-        // Delete all role-permission mappings for this permission
         const deletedAssignments = await RolePermission.deleteMany({
             permission_id: id
         });
 
-        // Delete the permission itself
         await Permission.findByIdAndDelete(id);
 
         return respond(

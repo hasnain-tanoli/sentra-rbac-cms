@@ -1,4 +1,3 @@
-// types/post.ts
 export interface Post {
   _id: string;
   title: string;

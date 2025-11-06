@@ -3,9 +3,6 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { User } from "@/lib/db/models/user.model";
 import { UserRole } from "@/lib/db/models/userRole.model";
-import type { JWT } from "next-auth/jwt";
-import type { Session } from "next-auth";
-import { TokenUser } from "@/types/auth";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/db/connection";
 
@@ -17,6 +14,13 @@ type LeanUser = {
     is_active: boolean;
     created_at: Date;
     updated_at: Date;
+};
+
+type TokenUser = {
+    id: string;
+    name: string;
+    email: string;
+    roles: string[];
 };
 
 export const authOptions: AuthOptions = {
@@ -70,26 +74,24 @@ export const authOptions: AuthOptions = {
     ],
 
     callbacks: {
-        async jwt({ token, user }: { token: JWT & { user?: TokenUser }; user?: TokenUser }) {
+        async jwt({ token, user }) {
             if (user) {
-                token.user = {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    roles: user.roles,
-                };
+                token.id = user.id;
+                token.name = user.name;
+                token.email = user.email;
+                token.roles = (user as TokenUser).roles;
             }
             return token;
         },
 
-        async session({ session, token }: { session: Session; token: JWT & { user?: TokenUser } }) {
-            if (token.user) {
+        async session({ session, token }) {
+            if (token) {
                 session.user = {
-                    id: token.user.id,
-                    name: token.user.name,
-                    email: token.user.email,
-                    roles: token.user.roles,
+                    id: token.id as string,
+                    name: token.name as string | null,
+                    email: token.email as string | null,
                     image: session.user?.image ?? null,
+                    roles: token.roles as string[],
                 };
             }
             return session;
@@ -108,4 +110,6 @@ export const authOptions: AuthOptions = {
     session: {
         strategy: "jwt",
     },
+
+    secret: process.env.NEXTAUTH_SECRET,
 };

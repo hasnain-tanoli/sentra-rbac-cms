@@ -25,7 +25,6 @@ function respond<T>(
   return NextResponse.json(payload, { status });
 }
 
-// POST - Assign role to user
 export async function POST(req: Request) {
   try {
     console.log("POST /api/user-roles - Starting...");
@@ -38,12 +37,9 @@ export async function POST(req: Request) {
       return respond(false, "Unauthorized. Please log in.", 401);
     }
 
-    // Check permission
     const canAssign = await hasPermission(session.user.id, 'roles', 'update');
     console.log("Can assign roles:", canAssign);
 
-    // OPTIONAL: Temporarily bypass permission check for testing
-    // Comment out these lines to bypass permission check
     if (!canAssign) {
       console.log("Permission denied - returning 403");
       return respond(false, "Forbidden. You don't have permission to assign roles.", 403);
@@ -56,13 +52,11 @@ export async function POST(req: Request) {
 
     console.log("Received assignment request:", { user_id, role_id });
 
-    // Validate input
     if (!user_id || !role_id) {
       console.log("Missing required fields");
       return respond(false, "user_id and role_id are required.", 400);
     }
 
-    // Validate MongoDB ObjectIds
     if (!mongoose.Types.ObjectId.isValid(user_id)) {
       console.log("Invalid user_id format:", user_id);
       return respond(false, "Invalid user_id format.", 400);
@@ -73,7 +67,6 @@ export async function POST(req: Request) {
       return respond(false, "Invalid role_id format.", 400);
     }
 
-    // Check if user exists
     console.log("Checking if user exists...");
     const userExists = await User.findById(user_id);
     if (!userExists) {
@@ -82,7 +75,6 @@ export async function POST(req: Request) {
     }
     console.log("User found:", userExists.email);
 
-    // Check if role exists
     console.log("Checking if role exists...");
     const roleExists = await Role.findById(role_id);
     if (!roleExists) {
@@ -91,7 +83,6 @@ export async function POST(req: Request) {
     }
     console.log("Role found:", roleExists.title);
 
-    // Check if assignment already exists
     console.log("Checking for existing assignment...");
     const existingAssignment = await UserRole.findOne({ user_id, role_id });
     if (existingAssignment) {
@@ -99,12 +90,10 @@ export async function POST(req: Request) {
       return respond(false, "This role is already assigned to this user.", 409);
     }
 
-    // Create the assignment
     console.log("Creating assignment...");
     const userRole = await UserRole.create({ user_id, role_id });
     console.log("Assignment created:", userRole._id);
 
-    // Populate the response
     const populatedUserRole = await UserRole.findById(userRole._id)
       .populate('user_id', 'name email')
       .populate('role_id', 'title key description');
@@ -118,7 +107,6 @@ export async function POST(req: Request) {
   }
 }
 
-// GET - Fetch all user-role assignments
 export async function GET() {
   try {
     console.log("GET /api/user-roles - Starting...");
@@ -131,12 +119,9 @@ export async function GET() {
       return respond(false, "Unauthorized. Please log in.", 401);
     }
 
-    // Check permission
     const canRead = await hasPermission(session.user.id, 'roles', 'read');
     console.log("Can read role assignments:", canRead);
 
-    // OPTIONAL: Temporarily bypass permission check for testing
-    // Comment out these lines to bypass permission check
     if (!canRead) {
       console.log("Permission denied - returning 403");
       return respond(false, "Forbidden. You don't have permission to view role assignments.", 403);
@@ -153,7 +138,6 @@ export async function GET() {
 
     console.log("Assignments found:", assignments.length);
 
-    // Filter out any invalid assignments (where user or role was deleted)
     const validAssignments = assignments.filter(a => a.user_id && a.role_id);
     console.log("Valid assignments:", validAssignments.length);
 
@@ -164,7 +148,6 @@ export async function GET() {
   }
 }
 
-// DELETE - Remove role from user
 export async function DELETE(req: Request) {
   try {
     console.log("DELETE /api/user-roles - Starting...");
@@ -177,12 +160,9 @@ export async function DELETE(req: Request) {
       return respond(false, "Unauthorized. Please log in.", 401);
     }
 
-    // Check permission
     const canDelete = await hasPermission(session.user.id, 'roles', 'update');
     console.log("Can delete role assignments:", canDelete);
 
-    // OPTIONAL: Temporarily bypass permission check for testing
-    // Comment out these lines to bypass permission check
     if (!canDelete) {
       console.log("Permission denied - returning 403");
       return respond(false, "Forbidden. You don't have permission to remove role assignments.", 403);

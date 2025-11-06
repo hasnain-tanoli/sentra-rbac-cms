@@ -9,10 +9,9 @@ export interface Permission {
     action: string;
 }
 
-export interface TokenUser {
+export type TokenUser = {
     id: string;
-    name?: string | null;
-    email?: string | null;
-    roles: string[];  
-    permissions?: Permission[];
-}
+    name: string;
+    email: string;
+    roles: string[];
+};

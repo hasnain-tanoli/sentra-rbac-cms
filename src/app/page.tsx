@@ -17,7 +17,6 @@ async function getPosts(): Promise<Post[]> {
 
     const data: { success: boolean; data: Post[] } = await res.json();
 
-    // Filter to only return published posts
     const publishedPosts = (data.data || []).filter(
       (post) => post.status === "published"
     );

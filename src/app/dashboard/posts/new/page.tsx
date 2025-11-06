@@ -1,4 +1,3 @@
-// app/dashboard/posts/new/page.tsx
 "use client";
 
 import DashboardLayout from "@/components/layout/DashboardLayout";

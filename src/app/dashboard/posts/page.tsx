@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,7 @@ import { Trash2, Edit } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermission";
 
 interface PostAuthor {
-  _id: string; // include author id so we can detect ownership
+  _id: string;
   name: string;
   email: string;
 }
@@ -41,8 +41,8 @@ interface Post {
   content: string;
   status: string;
   author_id: PostAuthor;
-  created_at?: string; // if your model uses created_at
-  createdAt?: string; // if using default mongoose createdAt
+  created_at?: string;
+  createdAt?: string;
 }
 
 interface ApiResponse {
@@ -59,7 +59,6 @@ interface DeleteResponse {
 export default function PostsPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [deleteSlug, setDeleteSlug] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -74,22 +73,20 @@ export default function PostsPage() {
     [permissions]
   );
 
-  // helper: match dot or colon separators
-  const has = (key: string) =>
-    perms.includes(key) ||
-    perms.includes(key.replace(".", ":")) ||
-    perms.includes(key.replace(":", "."));
+  const has = useCallback(
+    (key: string) =>
+      perms.includes(key) ||
+      perms.includes(key.replace(".", ":")) ||
+      perms.includes(key.replace(":", ".")),
+    [perms]
+  );
 
   const canCreatePosts = has("posts.create");
   const canReadPosts = has("posts.read");
   const canUpdatePosts = has("posts.update");
   const canDeleteAnyPost = has("posts.delete");
 
-  useEffect(() => {
-    fetchPosts();
-  }, []);
-
-  async function fetchPosts() {
+  const fetchPosts = useCallback(async () => {
     try {
       const res = await fetch("/api/posts");
       const data = (await res.json()) as ApiResponse;
@@ -112,7 +109,11 @@ export default function PostsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchPosts();
+  }, [fetchPosts]);
 
   async function handleDelete() {
     if (!deleteSlug) return;
@@ -130,7 +131,7 @@ export default function PostsPage() {
       if (res.ok && data?.success) {
         setPosts((prev) => prev.filter((post) => post.slug !== deleteSlug));
         toast({ title: "Success", description: data.message });
-        setDeleteSlug(null); // close dialog on success
+        setDeleteSlug(null);
       } else {
         const message =
           data?.message ||
@@ -142,7 +143,7 @@ export default function PostsPage() {
             ? "Post not found."
             : "Failed to delete post.");
 
-        setDeleteError(message); // keep dialog open and show message
+        setDeleteError(message);
         toast({ title: "Error", description: message, variant: "destructive" });
       }
     } catch (error) {
@@ -153,6 +154,21 @@ export default function PostsPage() {
     } finally {
       setIsDeleting(false);
     }
+  }
+
+  if (!loading && !canReadPosts) {
+    return (
+      <DashboardLayout>
+        <Card>
+          <CardContent className="py-12">
+            <p className="text-center text-muted-foreground">
+              You don&apos;t have permission to view posts. Please contact your
+              administrator.
+            </p>
+          </CardContent>
+        </Card>
+      </DashboardLayout>
+    );
   }
 
   return (

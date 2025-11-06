@@ -1,4 +1,3 @@
-// components/posts/PostCard.tsx
 import {
   Card,
   CardHeader,
@@ -16,11 +15,8 @@ interface PostCardProps {
   post: Post;
 }
 
-// SSR-safe HTML stripping using regex
 function stripHtml(html: string): string {
-  // Remove HTML tags
   let text = html.replace(/<[^>]*>/g, "");
-  // Decode common HTML entities
   text = text
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
@@ -28,7 +24,6 @@ function stripHtml(html: string): string {
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'");
-  // Remove extra whitespace
   return text.trim().replace(/\s+/g, " ");
 }
 

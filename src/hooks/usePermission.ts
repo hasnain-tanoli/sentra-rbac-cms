@@ -1,4 +1,3 @@
-// hooks/usePermission.ts
 "use client";
 
 import { useSession } from "next-auth/react";
@@ -48,25 +47,21 @@ export function usePermissions(): UserPermissions {
     return { permissions, loading };
 }
 
-// Check single permission
 export function useHasPermission(permissionKey: string): boolean {
     const { permissions } = usePermissions();
     return permissions.includes(permissionKey);
 }
 
-// Check if user has ANY of the provided permissions
 export function useHasAnyPermission(permissionKeys: string[]): boolean {
     const { permissions } = usePermissions();
     return permissionKeys.some(key => permissions.includes(key));
 }
 
-// Check if user has ALL of the provided permissions
 export function useHasAllPermissions(permissionKeys: string[]): boolean {
     const { permissions } = usePermissions();
     return permissionKeys.every(key => permissions.includes(key));
 }
 
-// Check if user has permissions matching a pattern (e.g., "posts:")
 export function useHasPermissionPattern(pattern: string): boolean {
     const { permissions } = usePermissions();
     return permissions.some(p => p.startsWith(pattern));

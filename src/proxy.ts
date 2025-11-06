@@ -1,4 +1,3 @@
-// middleware.ts
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequestWithAuth } from "next-auth/middleware";
@@ -13,17 +12,14 @@ export default withAuth(
         const url = req.nextUrl.clone();
         const path = req.nextUrl.pathname;
 
-        // Check if user is authenticated
-        if (!token?.user?.id) {
+        if (!token?.id) {
             url.pathname = "/auth/login";
             return NextResponse.redirect(url);
         }
 
-        const userId = token.user.id;
+        const userId = token.id;
 
-        // Route-specific permission checks
         try {
-            // Roles management routes - requires roles:read or roles:update permission
             if (path.startsWith("/dashboard/roles")) {
                 const canReadRoles = await hasPermission(userId, "roles", "read");
                 const canUpdateRoles = await hasPermission(userId, "roles", "update");
@@ -34,7 +30,6 @@ export default withAuth(
                 }
             }
 
-            // Permissions management routes - requires permissions:read permission
             if (path.startsWith("/dashboard/permissions")) {
                 const canReadPermissions = await hasPermission(userId, "permissions", "read");
 
@@ -44,7 +39,6 @@ export default withAuth(
                 }
             }
 
-            // Users management routes - requires users:read permission
             if (path.startsWith("/dashboard/users")) {
                 const canReadUsers = await hasPermission(userId, "users", "read");
 
@@ -54,7 +48,6 @@ export default withAuth(
                 }
             }
 
-            // Posts management routes - requires posts permissions
             if (path.startsWith("/dashboard/posts")) {
                 const canReadPosts = await hasPermission(userId, "posts", "read");
                 const canCreatePosts = await hasPermission(userId, "posts", "create");
@@ -65,7 +58,6 @@ export default withAuth(
                 }
             }
 
-            // General dashboard access - requires at least one permission
             if (path.startsWith("/dashboard")) {
                 const hasAccess = await hasDashboardAccess(userId);
 

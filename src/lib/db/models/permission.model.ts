@@ -1,6 +1,5 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-// Central source of truth
 export const RESOURCES = ['users', 'roles', 'permissions', 'posts', 'dashboard'] as const;
 export type Resource = typeof RESOURCES[number];
 
@@ -28,7 +27,6 @@ const PermissionSchema = new Schema<IPermission>(
   }
 );
 
-// Optional compound index; uniqueness is enforced by `key`
 PermissionSchema.index({ resource: 1, action: 1 });
 
 export const Permission: Model<IPermission> =

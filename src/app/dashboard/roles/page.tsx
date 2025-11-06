@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Role } from "@/types/role";
 import { User } from "@/types/user";
 import { UserRole } from "@/types/userRole";
-import { Permission } from "@/types/permission";
-import { Button } from "@/components/ui/button";
 import { RolePermission } from "@/types/rolePermission";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -50,39 +49,30 @@ export default function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [assignments, setAssignments] = useState<UserRole[]>([]);
-  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
-
-  // Create Role State
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newRoleTitle, setNewRoleTitle] = useState("");
   const [newRoleDesc, setNewRoleDesc] = useState("");
-
-  // Edit Role State
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
-
-  // Delete Role State
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingRole, setDeletingRole] = useState<Role | null>(null);
-
-  // Assign Role State
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState("");
   const [selectedRole, setSelectedRole] = useState("");
 
   const { toast } = useToast();
 
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     try {
-      console.log("Fetching roles..."); // Debug
+      console.log("Fetching roles...");
       const res = await fetch("/api/roles");
       const data = await res.json();
-      console.log("Roles response:", data); // Debug
+      console.log("Roles response:", data);
       if (data.success) {
         setRoles(data.data || []);
       } else {
@@ -101,14 +91,14 @@ export default function RolesPage() {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
-      console.log("Fetching users..."); // Debug
+      console.log("Fetching users...");
       const res = await fetch("/api/users");
       const data = await res.json();
-      console.log("Users response:", data); // Debug
+      console.log("Users response:", data);
       if (data.success) {
         setUsers(data.data || []);
       } else {
@@ -117,14 +107,14 @@ export default function RolesPage() {
     } catch (err) {
       console.error("Error fetching users:", err);
     }
-  };
+  }, []);
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
     try {
-      console.log("Fetching assignments..."); // Debug
+      console.log("Fetching assignments...");
       const res = await fetch("/api/user-roles");
       const data = await res.json();
-      console.log("Assignments response:", data); // Debug
+      console.log("Assignments response:", data);
       if (data.success) {
         setAssignments(data.data || []);
       } else {
@@ -133,30 +123,14 @@ export default function RolesPage() {
     } catch (err) {
       console.error("Error fetching assignments:", err);
     }
-  };
+  }, []);
 
-  const fetchPermissions = async () => {
+  const fetchRolePermissions = useCallback(async () => {
     try {
-      console.log("Fetching permissions..."); // Debug
-      const res = await fetch("/api/permissions");
-      const data = await res.json();
-      console.log("Permissions response:", data); // Debug
-      if (data.success) {
-        setPermissions(data.data || []);
-      } else {
-        console.error("Failed to fetch permissions:", data.message);
-      }
-    } catch (err) {
-      console.error("Error fetching permissions:", err);
-    }
-  };
-
-  const fetchRolePermissions = async () => {
-    try {
-      console.log("Fetching role-permissions..."); // Debug
+      console.log("Fetching role-permissions...");
       const res = await fetch("/api/role-permissions");
       const data = await res.json();
-      console.log("Role-permissions response:", data); // Debug
+      console.log("Role-permissions response:", data);
       if (data.success) {
         setRolePermissions(data.data || []);
       } else {
@@ -165,7 +139,7 @@ export default function RolesPage() {
     } catch (err) {
       console.error("Error fetching role-permissions:", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -175,7 +149,6 @@ export default function RolesPage() {
           fetchRoles(),
           fetchUsers(),
           fetchAssignments(),
-          fetchPermissions(),
           fetchRolePermissions(),
         ]);
       } catch (error) {
@@ -186,9 +159,8 @@ export default function RolesPage() {
     };
 
     loadData();
-  }, []);
+  }, [fetchRoles, fetchUsers, fetchAssignments, fetchRolePermissions]);
 
-  // Create Role
   const handleCreateRole = async () => {
     if (!newRoleTitle.trim()) {
       toast({
@@ -239,7 +211,6 @@ export default function RolesPage() {
     }
   };
 
-  // Edit Role
   const openEditDialog = (role: Role) => {
     if (!role?._id) {
       toast({
@@ -316,7 +287,6 @@ export default function RolesPage() {
     }
   };
 
-  // Delete Role
   const openDeleteDialog = (role: Role) => {
     if (!role?._id) {
       toast({
@@ -379,7 +349,6 @@ export default function RolesPage() {
     }
   };
 
-  // Assign Role to User
   const handleAssignRole = async () => {
     if (!selectedUser || !selectedRole) {
       toast({
@@ -437,7 +406,6 @@ export default function RolesPage() {
     }
   };
 
-  // Get users assigned to a role
   const getAssignedUsers = (roleId: string) => {
     return assignments
       .filter(
@@ -451,7 +419,6 @@ export default function RolesPage() {
       .map((a) => a.user_id.name);
   };
 
-  // Get permissions assigned to a role
   const getAssignedPermissions = (roleId: string) => {
     return rolePermissions
       .filter(
@@ -465,7 +432,6 @@ export default function RolesPage() {
       .map((rp) => rp.permission_id.key);
   };
 
-  // Show loading spinner while initial data loads
   if (initialLoading) {
     return (
       <DashboardLayout>
@@ -482,7 +448,6 @@ export default function RolesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -495,9 +460,7 @@ export default function RolesPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex gap-4">
-          {/* Create Role Dialog */}
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -554,7 +517,6 @@ export default function RolesPage() {
             </DialogContent>
           </Dialog>
 
-          {/* Assign Role to User Dialog */}
           <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -643,7 +605,6 @@ export default function RolesPage() {
           </Dialog>
         </div>
 
-        {/* Edit Role Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
@@ -705,7 +666,6 @@ export default function RolesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Role Alert Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -739,7 +699,6 @@ export default function RolesPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Roles Table */}
         <div className="rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
@@ -883,7 +842,6 @@ export default function RolesPage() {
           </div>
         </div>
 
-        {/* Stats Footer */}
         {roles.length > 0 && (
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <p>

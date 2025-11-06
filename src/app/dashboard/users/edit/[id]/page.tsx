@@ -78,11 +78,10 @@ export default function EditUserPage({
       return;
     }
 
-    // ✅ FIX: Convert selected role IDs to role keys before sending
     const roleKeys = selectedRoles.map((roleId) => {
       const role = roles.find((r) => r._id === roleId);
       return role ? role.key : "";
-    }).filter(key => key !== ""); // Filter out any empty keys
+    }).filter(key => key !== "");
 
     setLoading(true);
     try {
@@ -93,7 +92,7 @@ export default function EditUserPage({
           id,
           name,
           email,
-          role_keys: roleKeys, // Pass role_keys instead of roleIds
+          role_keys: roleKeys,
         }),
       });
 

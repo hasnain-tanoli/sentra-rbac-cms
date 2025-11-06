@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Permission } from "@/types/permission";
 import { Role } from "@/types/role";
 import { RolePermission } from "@/types/rolePermission";
@@ -44,38 +44,27 @@ export default function PermissionsPage() {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [selectedRole, setSelectedRole] = useState<string>("");
   const [loading, setLoading] = useState(false);
-
-  // Schema state - fetched from backend
   const [availableResources, setAvailableResources] = useState<string[]>([]);
   const [availableActions, setAvailableActions] = useState<string[]>([]);
-
-  // Create Permission State
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newPermission, setNewPermission] = useState({
     resource: "",
     action: "",
     description: "",
   });
-
-  // Edit Permission State
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingPermission, setEditingPermission] = useState<Permission | null>(
     null
   );
   const [editDescription, setEditDescription] = useState("");
-
-  // Delete Permission State
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingPermission, setDeletingPermission] =
     useState<Permission | null>(null);
-
-  // Assign Permissions Dialog State
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   const { toast } = useToast();
 
-  // Fetch permission schema (allowed actions and resources)
-  const fetchPermissionSchema = async () => {
+  const fetchPermissionSchema = useCallback(async () => {
     try {
       const res = await fetch("/api/permissions?schema=true");
       const data = await res.json();
@@ -91,9 +80,9 @@ export default function PermissionsPage() {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
-  const fetchPermissions = async () => {
+  const fetchPermissions = useCallback(async () => {
     try {
       const res = await fetch("/api/permissions");
       const data = await res.json();
@@ -108,9 +97,9 @@ export default function PermissionsPage() {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
-  const fetchRoles = async () => {
+  const fetchRoles = useCallback(async () => {
     try {
       const res = await fetch("/api/roles");
       const data = await res.json();
@@ -120,9 +109,9 @@ export default function PermissionsPage() {
     } catch (err) {
       console.error("Error fetching roles:", err);
     }
-  };
+  }, []);
 
-  const fetchAssignments = async () => {
+  const fetchAssignments = useCallback(async () => {
     try {
       const res = await fetch("/api/role-permissions");
       const data = await res.json();
@@ -132,7 +121,7 @@ export default function PermissionsPage() {
     } catch (err) {
       console.error("Error fetching role-permissions:", err);
     }
-  };
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -142,7 +131,7 @@ export default function PermissionsPage() {
       await fetchAssignments();
     }
     loadData();
-  }, []);
+  }, [fetchPermissionSchema, fetchPermissions, fetchRoles, fetchAssignments]);
 
   // Create Permission
   const handleCreatePermission = async () => {
@@ -191,7 +180,6 @@ export default function PermissionsPage() {
     }
   };
 
-  // Edit Permission
   const openEditDialog = (permission: Permission) => {
     if (!permission?._id) {
       toast({
@@ -253,7 +241,6 @@ export default function PermissionsPage() {
     }
   };
 
-  // Delete Permission
   const openDeleteDialog = (permission: Permission) => {
     if (!permission?._id) {
       toast({
@@ -312,7 +299,6 @@ export default function PermissionsPage() {
     }
   };
 
-  // Assign Permissions to Role
   const handleAssignPermissions = async () => {
     if (!selectedRole || selectedPermissions.length === 0) {
       toast({
@@ -371,7 +357,6 @@ export default function PermissionsPage() {
     );
   };
 
-  // Get roles assigned to a permission
   const getAssignedRoles = (permissionId: string) => {
     return assignments
       .filter(
@@ -388,7 +373,6 @@ export default function PermissionsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold flex items-center gap-2">
@@ -401,9 +385,7 @@ export default function PermissionsPage() {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div className="flex gap-4">
-          {/* Create Permission Dialog */}
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -503,7 +485,6 @@ export default function PermissionsPage() {
             </DialogContent>
           </Dialog>
 
-          {/* Assign Permissions Dialog */}
           <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -609,7 +590,6 @@ export default function PermissionsPage() {
           </Dialog>
         </div>
 
-        {/* Edit Permission Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
@@ -667,7 +647,6 @@ export default function PermissionsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Permission Alert Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent>
             <AlertDialogHeader>
@@ -698,7 +677,6 @@ export default function PermissionsPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Permissions Table */}
         <div className="rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
@@ -811,7 +789,6 @@ export default function PermissionsPage() {
           </div>
         </div>
 
-        {/* Stats Footer */}
         {permissions.length > 0 && (
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <p>

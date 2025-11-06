@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -97,7 +97,7 @@ function extractMessage(
     case 401:
       return "Unauthorized. Please log in.";
     case 403:
-      return "You don’t have permission to perform this action.";
+      return "You don't have permission to perform this action.";
     case 404:
       return "Not found.";
     default:
@@ -127,7 +127,6 @@ export default function UsersPage() {
 
   const { toast } = useToast();
 
-  // Permissions
   const { permissions, loading: permsLoading } = usePermissions();
   const permsSet = useMemo(() => new Set(permissions), [permissions]);
 
@@ -144,82 +143,87 @@ export default function UsersPage() {
 
   const canReadPermissions = hasKey("permissions", "read");
 
-  // Allow assignment if they can update roles OR users
   const canAssignRoles = canUpdateRoles || canUpdateUsers;
 
-  // Column visibility
   const showRolesColumn = canReadRoles;
   const showPermissionsColumn = canReadPermissions;
 
-  const fetchData = async (opts: { fetchRoles: boolean }) => {
-    setLoading(true);
-    setFetchError(null);
+  const fetchData = useCallback(
+    async (opts: { fetchRoles: boolean }) => {
+      setLoading(true);
+      setFetchError(null);
 
-    try {
-      // Users
-      const resUsers = await fetch("/api/users");
-      const dataUsers = await safeJson<ApiResponse<User[]>>(resUsers);
-
-      if (resUsers.ok && dataUsers?.success && Array.isArray(dataUsers.data)) {
-        setUsers(dataUsers.data);
-      } else {
-        const msg = extractMessage(
-          resUsers,
-          "Failed to load users.",
-          dataUsers
-        );
-        setFetchError((prev) => prev ?? msg);
-        toast({ title: "Error", description: msg, variant: "destructive" });
-      }
-
-      // Roles: only fetch if we truly have roles.read (to avoid forbidden toasts)
-      if (opts.fetchRoles) {
-        const resRoles = await fetch("/api/roles");
-        const dataRoles = await safeJson<ApiResponse<Role[]>>(resRoles);
+      try {
+        const resUsers = await fetch("/api/users");
+        const dataUsers = await safeJson<ApiResponse<User[]>>(resUsers);
 
         if (
-          resRoles.ok &&
-          dataRoles?.success &&
-          Array.isArray(dataRoles.data)
+          resUsers.ok &&
+          dataUsers?.success &&
+          Array.isArray(dataUsers.data)
         ) {
-          setRoles(dataRoles.data);
+          setUsers(dataUsers.data);
         } else {
-          // Swallow 403 silently; other errors still toast
-          if (resRoles.status !== 403) {
-            const msg = extractMessage(
-              resRoles,
-              "Failed to load roles.",
-              dataRoles
-            );
-            setFetchError((prev) => prev ?? msg);
-            toast({ title: "Error", description: msg, variant: "destructive" });
+          const msg = extractMessage(
+            resUsers,
+            "Failed to load users.",
+            dataUsers
+          );
+          setFetchError((prev) => prev ?? msg);
+          toast({ title: "Error", description: msg, variant: "destructive" });
+        }
+
+        if (opts.fetchRoles) {
+          const resRoles = await fetch("/api/roles");
+          const dataRoles = await safeJson<ApiResponse<Role[]>>(resRoles);
+
+          if (
+            resRoles.ok &&
+            dataRoles?.success &&
+            Array.isArray(dataRoles.data)
+          ) {
+            setRoles(dataRoles.data);
+          } else {
+            if (resRoles.status !== 403) {
+              const msg = extractMessage(
+                resRoles,
+                "Failed to load roles.",
+                dataRoles
+              );
+              setFetchError((prev) => prev ?? msg);
+              toast({
+                title: "Error",
+                description: msg,
+                variant: "destructive",
+              });
+            }
+            setRoles([]);
           }
+        } else {
           setRoles([]);
         }
-      } else {
-        setRoles([]);
+      } catch (err: unknown) {
+        const msg = errorMessage(err, "Network error loading users and roles.");
+        setFetchError(msg);
+        toast({ title: "Error", description: msg, variant: "destructive" });
+      } finally {
+        setLoading(false);
       }
-    } catch (err: unknown) {
-      const msg = errorMessage(err, "Network error loading users and roles.");
-      setFetchError(msg);
-      toast({ title: "Error", description: msg, variant: "destructive" });
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [toast]
+  );
 
-  // Load data once permissions are known; only fetch roles if roles.read is present
   useEffect(() => {
     if (!permsLoading) {
       void fetchData({ fetchRoles: canReadRoles });
     }
-  }, [permsLoading, canReadRoles,]);
+  }, [permsLoading, canReadRoles, fetchData]);
 
   const handleAssignRole = async () => {
     setAssignError(null);
 
     if (!canAssignRoles) {
-      const msg = "You don’t have permission to assign roles.";
+      const msg = "You don't have permission to assign roles.";
       setAssignError(msg);
       toast({ title: "Forbidden", description: msg, variant: "destructive" });
       return;
@@ -230,7 +234,6 @@ export default function UsersPage() {
       return;
     }
 
-    // Determine the role key based on permission to list roles
     let roleKeyToAssign = "";
     if (canReadRoles) {
       const roleObj = roles.find((r) => r._id === selectedRole);
@@ -291,7 +294,7 @@ export default function UsersPage() {
     if (!deleteUserId) return;
 
     if (!canDeleteUsers) {
-      const msg = "You don’t have permission to delete users.";
+      const msg = "You don't have permission to delete users.";
       setDeleteError(msg);
       toast({ title: "Forbidden", description: msg, variant: "destructive" });
       return;
@@ -447,7 +450,7 @@ export default function UsersPage() {
                   disabled={assigning || uiLoading || !canAssignRoles}
                 />
                 <div className="text-xs text-muted-foreground mt-2">
-                  You don’t have roles.read; enter a known role key.
+                  You don&apos;t have roles.read; enter a known role key.
                 </div>
               </div>
             )}

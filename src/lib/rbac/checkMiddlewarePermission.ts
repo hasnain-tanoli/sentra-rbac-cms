@@ -1,4 +1,3 @@
-// lib/rbac/checkMiddlewarePermission.ts
 import { UserRole } from '../db/models/userRole.model';
 import { Action, Resource } from '../db/models/permission.model';
 import mongoose from 'mongoose';
@@ -53,7 +52,6 @@ export async function hasPermission(
     }
 }
 
-// Check if user has any permissions for a resource
 export async function hasAnyPermissionForResource(
     userId: string | mongoose.Types.ObjectId,
     resource: Resource
@@ -101,7 +99,6 @@ export async function hasAnyPermissionForResource(
     }
 }
 
-// Check if user has dashboard access (any permission)
 export async function hasDashboardAccess(
     userId: string | mongoose.Types.ObjectId
 ): Promise<boolean> {
@@ -112,7 +109,6 @@ export async function hasDashboardAccess(
             ? new mongoose.Types.ObjectId(userId)
             : userId;
 
-        // Check if user has any permission at all
         const result = await UserRole.aggregate([
             { $match: { user_id: userObjectId } },
             {
@@ -135,7 +131,6 @@ export async function hasDashboardAccess(
     }
 }
 
-// Get all user permissions for quick checking
 export async function getUserPermissionsList(
     userId: string | mongoose.Types.ObjectId
 ): Promise<string[]> {

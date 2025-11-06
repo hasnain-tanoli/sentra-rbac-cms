@@ -7,16 +7,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { ArrowLeft, Calendar, User, Clock } from "lucide-react";
-import parse from "html-react-parser"; // 1. Import the parser
+import parse from "html-react-parser";
 
 type Props = {
   params: Promise<{ slug: string }>;
 };
 
-// Define a type for your post data for better type safety
 type Post = {
   title: string;
-  content: string; // Content is HTML
+  content: string;
   status: "published" | "draft";
   createdAt?: string;
   created_at?: string;
@@ -49,7 +48,6 @@ export async function generateMetadata(props: Props) {
     };
   }
 
-  // Strip HTML tags for a plain text description
   const plainTextContent = post.content.replace(/<[^>]*>?/gm, "");
 
   return {
@@ -75,7 +73,6 @@ export default async function Page(props: Props) {
       })
     : "";
 
-  // Estimate reading time by stripping HTML tags first
   const plainTextContent = post.content.replace(/<[^>]*>?/gm, "");
   const wordCount = plainTextContent.split(/\s+/).filter(Boolean).length;
   const readingTime = Math.ceil(wordCount / 200);
@@ -86,7 +83,6 @@ export default async function Page(props: Props) {
 
       <main className="flex-1 bg-linear-to-b from-background to-muted/20">
         <div className="container max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-          {/* Back Button */}
           <Link href="/" className="inline-block mb-8">
             <Button
               variant="ghost"
@@ -98,11 +94,8 @@ export default async function Page(props: Props) {
             </Button>
           </Link>
 
-          {/* Article Container */}
           <article className="space-y-8">
-            {/* Header Section */}
             <div className="space-y-6">
-              {/* Status Badge */}
               <div className="flex items-center gap-2">
                 <Badge
                   variant={
@@ -114,12 +107,10 @@ export default async function Page(props: Props) {
                 </Badge>
               </div>
 
-              {/* Title */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-tight">
                 {post.title}
               </h1>
 
-              {/* Meta Information */}
               <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-muted-foreground">
                 {post.author_id && (
                   <div className="flex items-center gap-2">
@@ -146,8 +137,6 @@ export default async function Page(props: Props) {
               <Separator />
             </div>
 
-            {/* --- FIX IS HERE --- */}
-            {/* Content Section */}
             <Card className="border-none shadow-lg">
               <CardContent className="p-8 sm:p-12">
                 <div
@@ -164,14 +153,11 @@ export default async function Page(props: Props) {
                   prose-li:text-foreground/90 prose-li:my-1
                   prose-img:rounded-lg prose-img:shadow-md"
                 >
-                  {/* 2. Use the parser to convert the HTML string to React elements */}
                   {parse(post.content)}
                 </div>
               </CardContent>
             </Card>
-            {/* --- END OF FIX --- */}
 
-            {/* Author Card */}
             {post.author_id && (
               <Card className="border-2 border-primary/10 bg-primary/5">
                 <CardContent className="p-6 sm:p-8">
@@ -195,7 +181,6 @@ export default async function Page(props: Props) {
               </Card>
             )}
 
-            {/* Footer Actions */}
             <div className="pt-8 border-t flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
               <Link href="/">
                 <Button variant="outline" className="gap-2">
