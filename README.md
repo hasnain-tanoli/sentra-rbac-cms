@@ -1,4 +1,3 @@
-```markdown
 <div align="center">
 
 # 🚀 Sentra RBAC CMS
@@ -11,11 +10,11 @@
 [![MongoDB](https://img.shields.io/badge/MongoDB-Latest-47A248?style=for-the-badge&logo=mongodb)](https://www.mongodb.com/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 
-[Features](#-features) • [Demo](#-demo) • [Installation](#-installation) • [Documentation](#-documentation) • [Contributing](#-contributing)
-
----
+[Features](#-features) • [Installation](#-installation) • [Documentation](#-api-documentation) • [Contributing](#-contributing)
 
 </div>
+
+---
 
 ## 📋 Table of Contents
 
@@ -26,7 +25,7 @@
 - [Installation](#-installation)
 - [Project Structure](#-project-structure)
 - [RBAC System](#-rbac-system)
-- [Scripts](#-available-scripts)
+- [Available Scripts](#-available-scripts)
 - [API Documentation](#-api-documentation)
 - [Deployment](#-deployment)
 - [Contributing](#-contributing)
@@ -63,8 +62,8 @@
 - ✅ Permission inheritance
 - ✅ Custom role creation
 
-    </td>
-    <td width="50%">
+</td>
+<td width="50%">
 
 ### 📝 Content Management
 - ✅ Rich text editor (TinyMCE)
@@ -74,7 +73,7 @@
 - ✅ Draft & publish workflow
 - ✅ SEO optimization
 
-    </td>
+</td>
   </tr>
   <tr>
     <td width="50%">
@@ -87,8 +86,8 @@
 - ✅ Accessible (WCAG 2.1)
 - ✅ Clean dashboard
 
-    </td>
-    <td width="50%">
+</td>
+<td width="50%">
 
 ### 🔒 Security & Auth
 - ✅ Next-Auth integration
@@ -98,7 +97,7 @@
 - ✅ CSRF protection
 - ✅ Rate limiting
 
-    </td>
+</td>
   </tr>
 </table>
 
@@ -247,16 +246,6 @@ sentra-rbac-cms/
 
 ## 🔐 RBAC System
 
-### Architecture
-
-```mermaid
-graph LR
-    A[User] -->|has many| B[Roles]
-    B -->|has many| C[Permissions]
-    C -->|grants access to| D[Resources]
-    D -->|allows| E[Actions]
-```
-
 ### Core Entities
 
 | Entity | Description | Example |
@@ -397,40 +386,6 @@ Add these environment variables in your Vercel dashboard:
 - `NEXTAUTH_SECRET`
 - `NEXTAUTH_URL`
 
-### Other Deployment Options
-
-<details>
-<summary>📦 Docker Deployment</summary>
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-```bash
-docker build -t sentra-rbac-cms .
-docker run -p 3000:3000 sentra-rbac-cms
-```
-
-</details>
-
-<details>
-<summary>☁️ AWS Deployment</summary>
-
-1. Set up an EC2 instance
-2. Install Node.js and MongoDB
-3. Clone repository and install dependencies
-4. Set up PM2 for process management
-5. Configure nginx as reverse proxy
-
-</details>
-
 ---
 
 ## 🤝 Contributing
@@ -462,10 +417,6 @@ We love contributions! Here's how you can help:
 - ✅ Add tests for new features
 - ✅ Ensure all tests pass
 
-### Code of Conduct
-
-Please read our [Code of Conduct](CODE_OF_CONDUCT.md) before contributing.
-
 ---
 
 ## 📄 License
@@ -496,15 +447,8 @@ Need help? We're here for you!
 </div>
 
 - 📧 **Email:** support@sentra-cms.com
-- 💬 **Discord:** [Join our community](https://discord.gg/your-invite)
 - 📖 **Documentation:** [Read the docs](https://docs.sentra-cms.com)
 - 🐛 **Bug Reports:** [Create an issue](https://github.com/hasnain-tanoli/sentra-rbac-cms/issues/new)
-
----
-
-## 🌟 Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=hasnain-tanoli/sentra-rbac-cms&type=Date)](https://star-history.com/#hasnain-tanoli/sentra-rbac-cms&Date)
 
 ---
 
@@ -531,21 +475,3 @@ Special thanks to:
 [![GitHub watchers](https://img.shields.io/github/watchers/hasnain-tanoli/sentra-rbac-cms?style=social)](https://github.com/hasnain-tanoli/sentra-rbac-cms/watchers)
 
 </div>
-```
-
-This beautiful README includes:
-
-✅ Professional badges and shields
-✅ Table of contents for easy navigation
-✅ Visual hierarchy with emojis and sections
-✅ Detailed feature tables
-✅ Mermaid diagram for RBAC architecture
-✅ Comprehensive API documentation
-✅ Deployment guides for multiple platforms
-✅ Contribution guidelines
-✅ Support section with multiple channels
-✅ Star history chart
-✅ Acknowledgments section
-✅ Social proof with GitHub stats
-
-The README is now much more engaging, informative, and professional! 🚀
