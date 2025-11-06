@@ -3,15 +3,6 @@
 import { useEffect, useState, useMemo, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -25,7 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Trash2, Edit } from "lucide-react";
+import { Trash2, Pencil, FileText, Plus, Loader2 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermission";
 
 interface PostAuthor {
@@ -130,7 +121,10 @@ export default function PostsPage() {
 
       if (res.ok && data?.success) {
         setPosts((prev) => prev.filter((post) => post.slug !== deleteSlug));
-        toast({ title: "Success", description: data.message });
+        toast({
+          title: "Success",
+          description: data.message || "Post deleted successfully",
+        });
         setDeleteSlug(null);
       } else {
         const message =
@@ -156,168 +150,281 @@ export default function PostsPage() {
     }
   }
 
-  if (!loading && !canReadPosts) {
+  const targetPost = deleteSlug
+    ? posts.find((p) => p.slug === deleteSlug)
+    : undefined;
+
+  const publishedCount = posts.filter((p) => p.status === "published").length;
+  const draftCount = posts.filter((p) => p.status === "draft").length;
+
+  if (loading) {
     return (
       <DashboardLayout>
-        <Card>
-          <CardContent className="py-12">
-            <p className="text-center text-muted-foreground">
-              You don&apos;t have permission to view posts. Please contact your
-              administrator.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading posts...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!canReadPosts) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold flex items-center gap-2">
+                <FileText className="h-8 w-8" />
+                Posts Management
+              </h1>
+              <p className="text-muted-foreground mt-2">
+                Manage your blog posts and articles
+              </p>
+            </div>
+          </div>
+          <div className="rounded-md border">
+            <div className="px-4 py-12 text-center text-muted-foreground">
+              <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
+              <p className="text-lg font-medium mb-2">Access Denied</p>
+              <p className="text-sm">
+                You don&apos;t have permission to view posts. Please contact
+                your administrator.
+              </p>
+            </div>
+          </div>
+        </div>
       </DashboardLayout>
     );
   }
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Manage Posts</h1>
-        <Link href="/dashboard/posts/new">
-          <Button
-            disabled={!canCreatePosts}
-            title={!canCreatePosts ? "You need posts.create" : ""}
-          >
-            Create New Post
-          </Button>
-        </Link>
-      </div>
-
-      {loading ? (
-        <p className="text-muted-foreground">Loading posts...</p>
-      ) : posts.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <p className="text-center text-muted-foreground">
-              No posts found.{" "}
-              {canCreatePosts
-                ? "Create your first post!"
-                : "You may not have permission to create posts."}
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <FileText className="h-8 w-8" />
+              Posts Management
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Manage your blog posts and articles
             </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>All Posts ({posts.length})</CardTitle>
-          </CardHeader>
-          <CardContent className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Author</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Created At</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {posts.map((post) => {
-                  const isAuthor =
-                    currentUserId && post.author_id?._id === currentUserId;
-                  const canEditThis = canUpdatePosts || !!isAuthor;
-                  const canDeleteThis = canDeleteAnyPost || !!isAuthor;
+          </div>
+        </div>
 
-                  const created =
-                    post.createdAt || post.created_at
-                      ? new Date(
-                          post.createdAt ?? post.created_at!
-                        ).toLocaleDateString()
-                      : "";
-
-                  return (
-                    <TableRow key={post._id}>
-                      <TableCell className="font-medium">
-                        {post.title}
-                      </TableCell>
-                      <TableCell>{post.author_id?.name || "Unknown"}</TableCell>
-                      <TableCell>
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            post.status === "published"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {post.status}
-                        </span>
-                      </TableCell>
-                      <TableCell>{created}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Link href={`/dashboard/posts/edit/${post.slug}`}>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={!canEditThis}
-                              title={
-                                !canEditThis
-                                  ? "You need posts.update or be the author"
-                                  : ""
-                              }
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Edit
-                            </Button>
-                          </Link>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            disabled={!canDeleteThis}
-                            title={
-                              !canDeleteThis
-                                ? "You need posts.delete or be the author"
-                                : ""
-                            }
-                            onClick={() => {
-                              setDeleteError(null);
-                              setDeleteSlug(post.slug);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      <AlertDialog
-        open={!!deleteSlug}
-        onOpenChange={(open) => !open && setDeleteSlug(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
-              post.
-              {deleteError && (
-                <div className="mt-3 text-red-600 text-sm">{deleteError}</div>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        {/* Action Buttons */}
+        <div className="flex gap-4">
+          <Link href="/dashboard/posts/new">
+            <Button
+              disabled={!canCreatePosts}
+              title={!canCreatePosts ? "You need posts.create permission" : ""}
             >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Post
+            </Button>
+          </Link>
+        </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog
+          open={!!deleteSlug}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteSlug(null);
+              setDeleteError(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the post{" "}
+                <strong className="text-foreground">
+                  &ldquo;{targetPost?.title}&rdquo;
+                </strong>
+                .
+                <br />
+                <br />
+                <span className="text-destructive font-medium">
+                  This action cannot be undone.
+                </span>
+                {deleteError && (
+                  <div className="mt-3 text-destructive text-sm bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
+                    {deleteError}
+                  </div>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {isDeleting ? "Deleting..." : "Delete Post"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Posts Table */}
+        <div className="rounded-md border">
+          <div className="overflow-x-auto">
+            <table className="w-full table-auto border-collapse">
+              <thead>
+                <tr className="bg-muted/50">
+                  <th className="border-b px-4 py-3 text-left font-medium">
+                    Title
+                  </th>
+                  <th className="border-b px-4 py-3 text-left font-medium">
+                    Author
+                  </th>
+                  <th className="border-b px-4 py-3 text-left font-medium">
+                    Status
+                  </th>
+                  <th className="border-b px-4 py-3 text-left font-medium">
+                    Created At
+                  </th>
+                  <th className="border-b px-4 py-3 text-left font-medium">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {posts.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={5}
+                      className="px-4 py-12 text-center text-muted-foreground"
+                    >
+                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                      <p className="text-lg font-medium mb-2">No posts found</p>
+                      <p className="text-sm mb-4">
+                        {canCreatePosts
+                          ? "Create your first post to get started"
+                          : "You may not have permission to create posts"}
+                      </p>
+                      {canCreatePosts && (
+                        <Link href="/dashboard/posts/new">
+                          <Button>
+                            <Plus className="mr-2 h-4 w-4" />
+                            Create Post
+                          </Button>
+                        </Link>
+                      )}
+                    </td>
+                  </tr>
+                ) : (
+                  posts.map((post) => {
+                    const isAuthor =
+                      currentUserId && post.author_id?._id === currentUserId;
+                    const canEditThis = canUpdatePosts || !!isAuthor;
+                    const canDeleteThis = canDeleteAnyPost || !!isAuthor;
+
+                    const created =
+                      post.createdAt || post.created_at
+                        ? new Date(
+                            post.createdAt ?? post.created_at!
+                          ).toLocaleDateString()
+                        : "—";
+
+                    return (
+                      <tr
+                        key={post._id}
+                        className="hover:bg-muted/30 transition-colors"
+                      >
+                        <td className="border-b px-4 py-3 font-medium">
+                          {post.title}
+                        </td>
+                        <td className="border-b px-4 py-3 text-sm text-muted-foreground">
+                          {post.author_id?.name || "Unknown"}
+                        </td>
+                        <td className="border-b px-4 py-3">
+                          <span
+                            className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                              post.status === "published"
+                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                            }`}
+                          >
+                            {post.status}
+                          </span>
+                        </td>
+                        <td className="border-b px-4 py-3 text-sm text-muted-foreground">
+                          {created}
+                        </td>
+                        <td className="border-b px-4 py-3">
+                          <div className="flex gap-2">
+                            <Link href={`/dashboard/posts/edit/${post.slug}`}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={!canEditThis}
+                                title={
+                                  !canEditThis
+                                    ? "You need posts.update or be the author"
+                                    : "Edit post"
+                                }
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={!canDeleteThis}
+                              title={
+                                !canDeleteThis
+                                  ? "You need posts.delete or be the author"
+                                  : "Delete post"
+                              }
+                              onClick={() => {
+                                setDeleteError(null);
+                                setDeleteSlug(post.slug);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Footer Statistics */}
+        {posts.length > 0 && (
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <p>
+              Total Posts: <span className="font-medium">{posts.length}</span>
+            </p>
+            <p>
+              Published:{" "}
+              <span className="font-medium text-green-600 dark:text-green-400">
+                {publishedCount}
+              </span>
+            </p>
+            <p>
+              Drafts:{" "}
+              <span className="font-medium text-yellow-600 dark:text-yellow-400">
+                {draftCount}
+              </span>
+            </p>
+          </div>
+        )}
+      </div>
     </DashboardLayout>
   );
 }

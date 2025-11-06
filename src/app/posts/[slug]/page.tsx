@@ -83,6 +83,7 @@ export default async function Page(props: Props) {
 
       <main className="flex-1 bg-linear-to-b from-background to-muted/20">
         <div className="container max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+          {/* Back Button */}
           <Link href="/" className="inline-block mb-8">
             <Button
               variant="ghost"
@@ -95,6 +96,7 @@ export default async function Page(props: Props) {
           </Link>
 
           <article className="space-y-8">
+            {/* Post Header */}
             <div className="space-y-6">
               <div className="flex items-center gap-2">
                 <Badge
@@ -117,7 +119,9 @@ export default async function Page(props: Props) {
                     <div className="rounded-full bg-primary/10 p-1.5">
                       <User className="h-3.5 w-3.5 text-primary" />
                     </div>
-                    <span className="font-medium">{post.author_id.name}</span>
+                    <span className="font-medium text-foreground">
+                      {post.author_id.name}
+                    </span>
                   </div>
                 )}
 
@@ -137,8 +141,9 @@ export default async function Page(props: Props) {
               <Separator />
             </div>
 
+            {/* Post Content */}
             <Card className="border-none shadow-lg">
-              <CardContent className="p-8 sm:p-12">
+              <CardContent className="p-6 sm:p-8 lg:p-12">
                 <div
                   className="prose prose-slate dark:prose-invert max-w-none
                   prose-headings:font-bold prose-headings:tracking-tight
@@ -146,30 +151,32 @@ export default async function Page(props: Props) {
                   prose-p:text-base prose-p:leading-7 prose-p:text-foreground/90
                   prose-a:text-primary prose-a:font-medium prose-a:no-underline hover:prose-a:underline
                   prose-strong:text-foreground prose-strong:font-semibold
-                  prose-code:text-primary prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
+                  prose-code:text-primary prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm
                   prose-pre:bg-muted prose-pre:border prose-pre:border-border
-                  prose-blockquote:border-l-primary prose-blockquote:border-l-4 prose-blockquote:pl-4 prose-blockquote:italic
-                  prose-ul:list-disc prose-ol:list-decimal
-                  prose-li:text-foreground/90 prose-li:my-1
-                  prose-img:rounded-lg prose-img:shadow-md"
+                  prose-blockquote:border-l-primary prose-blockquote:border-l-4 prose-blockquote:pl-6 prose-blockquote:italic prose-blockquote:text-muted-foreground
+                  prose-ul:list-disc prose-ul:pl-6 prose-ol:list-decimal prose-ol:pl-6
+                  prose-li:text-foreground/90 prose-li:my-2 prose-li:leading-7
+                  prose-img:rounded-lg prose-img:shadow-md prose-img:my-8
+                  prose-hr:border-border prose-hr:my-8"
                 >
                   {parse(post.content)}
                 </div>
               </CardContent>
             </Card>
 
+            {/* Author Card */}
             {post.author_id && (
               <Card className="border-2 border-primary/10 bg-primary/5">
                 <CardContent className="p-6 sm:p-8">
                   <div className="flex items-start gap-4">
-                    <div className="rounded-full bg-primary/20 p-4 shrink-0">
-                      <User className="h-8 w-8 text-primary" />
+                    <div className="rounded-full bg-primary/20 p-3 shrink-0">
+                      <User className="h-6 w-6 text-primary" />
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <h3 className="text-lg font-semibold">
+                    <div className="flex-1 space-y-2">
+                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                         About the Author
                       </h3>
-                      <p className="text-base font-medium text-foreground">
+                      <p className="text-lg font-semibold text-foreground">
                         {post.author_id.name}
                       </p>
                       <p className="text-sm text-muted-foreground">
@@ -181,6 +188,7 @@ export default async function Page(props: Props) {
               </Card>
             )}
 
+            {/* Footer Navigation */}
             <div className="pt-8 border-t flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
               <Link href="/">
                 <Button variant="outline" className="gap-2">
