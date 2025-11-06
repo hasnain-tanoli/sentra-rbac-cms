@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Montserrat } from "next/font/google";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 import SessionProviderWrapper from "@/components/providers/SessionProviderWrapper";
 
@@ -28,6 +29,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${montserrat.variable} font-sans antialiased`}>
         <SessionProviderWrapper>{children}</SessionProviderWrapper>
+        <Toaster />
       </body>
     </html>
   );

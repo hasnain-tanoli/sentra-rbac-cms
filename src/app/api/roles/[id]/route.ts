@@ -27,7 +27,7 @@ function respond<T>(
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -43,11 +43,13 @@ export async function GET(
 
     await connectDB();
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return respond(false, "Invalid role ID", 400);
     }
 
-    const role = await Role.findById(params.id);
+    const role = await Role.findById(id);
 
     if (!role) {
       return respond(false, "Role not found", 404);
@@ -62,7 +64,7 @@ export async function GET(
 
 export async function PUT(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -78,19 +80,17 @@ export async function PUT(
 
     await connectDB();
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return respond(false, "Invalid role ID", 400);
     }
 
     const { title, description } = await req.json();
 
-    const role = await Role.findById(params.id);
+    const role = await Role.findById(id);
     if (!role) {
       return respond(false, "Role not found", 404);
-    }
-
-    if (role.is_system) {
-      return respond(false, "Cannot modify system roles", 403);
     }
 
     if (title) role.title = title.trim();
@@ -107,7 +107,7 @@ export async function PUT(
 
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -123,24 +123,31 @@ export async function DELETE(
 
     await connectDB();
 
-    if (!mongoose.Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
       return respond(false, "Invalid role ID", 400);
     }
 
-    const role = await Role.findById(params.id);
+    const role = await Role.findById(id);
     if (!role) {
       return respond(false, "Role not found", 404);
     }
 
-    if (role.is_system) {
-      return respond(false, "Cannot delete system roles", 403);
-    }
+    // Delete related records
+    const deletedPermissions = await RolePermission.deleteMany({ role_id: id });
+    const deletedUserRoles = await UserRole.deleteMany({ role_id: id });
+    await Role.findByIdAndDelete(id);
 
-    await RolePermission.deleteMany({ role_id: params.id });
-    await UserRole.deleteMany({ role_id: params.id });
-    await Role.findByIdAndDelete(params.id);
-
-    return respond(true, "Role deleted successfully", 200);
+    return respond(
+      true,
+      `Role deleted successfully. Removed ${deletedUserRoles.deletedCount} user assignment(s) and ${deletedPermissions.deletedCount} permission(s).`,
+      200,
+      {
+        deletedUserRoles: deletedUserRoles.deletedCount,
+        deletedPermissions: deletedPermissions.deletedCount
+      }
+    );
   } catch (error) {
     console.error("DELETE /api/roles/[id] error:", error);
     return respond(false, "Failed to delete role", 500);

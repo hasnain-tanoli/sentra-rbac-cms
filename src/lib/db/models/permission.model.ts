@@ -1,53 +1,35 @@
-// lib/db/models/Permission.ts
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export const ACTIONS = ['create', 'read', 'update', 'delete'] as const;
-export const RESOURCES = ['users', 'posts', 'roles', 'permissions'] as const;
-
-export type Action = typeof ACTIONS[number];
+// Central source of truth
+export const RESOURCES = ['users', 'roles', 'permissions', 'posts', 'dashboard'] as const;
 export type Resource = typeof RESOURCES[number];
 
+export const ACTIONS = ['create', 'read', 'update', 'delete'] as const;
+export type Action = typeof ACTIONS[number];
+
 export interface IPermission extends Document {
+  key: string;
   resource: Resource;
   action: Action;
-  key: string;
-  description: string;
+  description?: string;
   created_at: Date;
+  updated_at: Date;
 }
 
-const PermissionSchema = new Schema<IPermission>({
-  resource: {
-    type: String,
-    required: true,
-    enum: RESOURCES,
-    index: true
+const PermissionSchema = new Schema<IPermission>(
+  {
+    key: { type: String, required: true, unique: true, index: true },
+    resource: { type: String, enum: RESOURCES, required: true, index: true },
+    action: { type: String, enum: ACTIONS, required: true, index: true },
+    description: { type: String },
   },
-  action: {
-    type: String,
-    required: true,
-    enum: ACTIONS,
-    index: true
-  },
-  key: {
-    type: String,
-    required: true,
-    unique: true,
-    index: true
-  },
-  description: String
-}, {
-  timestamps: { createdAt: 'created_at', updatedAt: false }
-});
-
-PermissionSchema.index({ resource: 1, action: 1 }, { unique: true });
-
-PermissionSchema.pre('save', function (next) {
-  this.key = `${this.resource}_${this.action}`;
-  if (!this.description) {
-    this.description = `${this.action.toUpperCase()} ${this.resource}`;
+  {
+    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
   }
-  next();
-});
+);
 
-export const Permission = mongoose.models.Permission ||
-  mongoose.model<IPermission>('Permission', PermissionSchema);
+// Optional compound index; uniqueness is enforced by `key`
+PermissionSchema.index({ resource: 1, action: 1 });
+
+export const Permission: Model<IPermission> =
+  mongoose.models.Permission || mongoose.model<IPermission>('Permission', PermissionSchema);

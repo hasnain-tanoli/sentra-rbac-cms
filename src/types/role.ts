@@ -6,4 +6,6 @@ export interface Role {
   key: string;
   description?: string;
   permissions?: Permission[];
+  created_at: Date;
+  updated_at: Date;
 }

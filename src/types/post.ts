@@ -1,6 +1,8 @@
+// types/post.ts
 export interface Post {
   _id: string;
   title: string;
+  slug: string;
   content: string;
   author_id: {
     _id: string;
@@ -8,6 +10,6 @@ export interface Post {
     email: string;
   };
   status: "draft" | "published";
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }

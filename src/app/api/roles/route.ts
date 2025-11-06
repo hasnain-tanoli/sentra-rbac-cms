@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       return respond(false, "A valid role title is required.", 400);
     }
 
-    const existingRole = await Role.findOne({ 
+    const existingRole = await Role.findOne({
       $or: [
         { title: title.trim() },
         ...(key ? [{ key: key.trim().toLowerCase() }] : [])

@@ -16,7 +16,13 @@ async function getPosts(): Promise<Post[]> {
     }
 
     const data: { success: boolean; data: Post[] } = await res.json();
-    return data.data || [];
+
+    // Filter to only return published posts
+    const publishedPosts = (data.data || []).filter(
+      (post) => post.status === "published"
+    );
+
+    return publishedPosts;
   } catch (error) {
     console.error("Error fetching posts:", error);
     return [];
