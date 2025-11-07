@@ -34,7 +34,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Pencil, Trash2, Plus, Shield } from "lucide-react";
+import { Pencil, Trash2, Plus, Shield, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PermissionsPage() {
@@ -373,27 +373,29 @@ export default function PermissionsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Shield className="h-8 w-8" />
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <Shield className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8" />
               Permissions Management
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
               Manage system permissions and assign them to roles
             </p>
           </div>
         </div>
 
-        <div className="flex gap-4">
+        {/* Action Buttons - Responsive */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Permission
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Create New Permission</DialogTitle>
                 <DialogDescription>
@@ -402,7 +404,9 @@ export default function PermissionsPage() {
               </DialogHeader>
               <div className="flex flex-col gap-4 mt-4">
                 <div>
-                  <Label htmlFor="resource">Resource *</Label>
+                  <Label htmlFor="resource" className="text-sm sm:text-base">
+                    Resource *
+                  </Label>
                   <Select
                     value={newPermission.resource}
                     onValueChange={(value) =>
@@ -423,7 +427,9 @@ export default function PermissionsPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="action">Action *</Label>
+                  <Label htmlFor="action" className="text-sm sm:text-base">
+                    Action *
+                  </Label>
                   <Select
                     value={newPermission.action}
                     onValueChange={(value) =>
@@ -444,7 +450,9 @@ export default function PermissionsPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="description">Description</Label>
+                  <Label htmlFor="description" className="text-sm sm:text-base">
+                    Description
+                  </Label>
                   <Input
                     id="description"
                     value={newPermission.description}
@@ -458,9 +466,10 @@ export default function PermissionsPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     setCreateDialogOpen(false);
                     setNewPermission({
@@ -474,6 +483,7 @@ export default function PermissionsPage() {
                   Cancel
                 </Button>
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={handleCreatePermission}
                   disabled={
                     loading || !newPermission.resource || !newPermission.action
@@ -487,12 +497,12 @@ export default function PermissionsPage() {
 
           <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <Shield className="mr-2 h-4 w-4" />
                 Assign Permissions to Role
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Assign Permissions to Role</DialogTitle>
                 <DialogDescription>
@@ -502,7 +512,9 @@ export default function PermissionsPage() {
 
               <div className="flex flex-col gap-4 mt-4">
                 <div>
-                  <Label htmlFor="select-role">Select Role *</Label>
+                  <Label htmlFor="select-role" className="text-sm sm:text-base">
+                    Select Role *
+                  </Label>
                   <Select onValueChange={setSelectedRole} value={selectedRole}>
                     <SelectTrigger id="select-role">
                       <SelectValue placeholder="Select Role" />
@@ -520,11 +532,11 @@ export default function PermissionsPage() {
                 </div>
 
                 <div className="border rounded-md p-4 max-h-64 overflow-y-auto">
-                  <p className="text-sm font-medium mb-3">
+                  <p className="text-xs sm:text-sm font-medium mb-3">
                     Select Permissions ({selectedPermissions.length} selected):
                   </p>
                   {permissions.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
+                    <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">
                       No permissions available. Create permissions first.
                     </p>
                   ) : (
@@ -542,7 +554,7 @@ export default function PermissionsPage() {
                               onChange={() => togglePermission(perm.key)}
                               className="rounded"
                             />
-                            <span className="text-sm flex-1">
+                            <span className="text-xs sm:text-sm flex-1">
                               <span className="font-medium capitalize">
                                 {perm.resource}
                               </span>{" "}
@@ -552,7 +564,7 @@ export default function PermissionsPage() {
                               </span>
                             </span>
                             {perm.description && (
-                              <span className="text-xs text-muted-foreground">
+                              <span className="text-xs text-muted-foreground hidden sm:inline">
                                 {perm.description}
                               </span>
                             )}
@@ -563,9 +575,10 @@ export default function PermissionsPage() {
                 </div>
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     setAssignDialogOpen(false);
                     setSelectedPermissions([]);
@@ -576,6 +589,7 @@ export default function PermissionsPage() {
                   Cancel
                 </Button>
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={handleAssignPermissions}
                   disabled={
                     !selectedRole || selectedPermissions.length === 0 || loading
@@ -590,8 +604,9 @@ export default function PermissionsPage() {
           </Dialog>
         </div>
 
+        {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Edit Permission</DialogTitle>
               <DialogDescription>
@@ -602,7 +617,7 @@ export default function PermissionsPage() {
             {editingPermission && (
               <div className="flex flex-col gap-4 mt-4">
                 <div>
-                  <Label>Resource</Label>
+                  <Label className="text-sm sm:text-base">Resource</Label>
                   <Input
                     value={editingPermission.resource}
                     disabled
@@ -610,7 +625,7 @@ export default function PermissionsPage() {
                   />
                 </div>
                 <div>
-                  <Label>Action</Label>
+                  <Label className="text-sm sm:text-base">Action</Label>
                   <Input
                     value={editingPermission.action}
                     disabled
@@ -618,7 +633,12 @@ export default function PermissionsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-description">Description</Label>
+                  <Label
+                    htmlFor="edit-description"
+                    className="text-sm sm:text-base"
+                  >
+                    Description
+                  </Label>
                   <Input
                     id="edit-description"
                     value={editDescription}
@@ -628,9 +648,10 @@ export default function PermissionsPage() {
                 </div>
               </div>
             )}
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setEditDialogOpen(false);
                   setEditingPermission(null);
@@ -640,15 +661,20 @@ export default function PermissionsPage() {
               >
                 Cancel
               </Button>
-              <Button onClick={handleEditPermission} disabled={loading}>
+              <Button
+                className="w-full sm:w-auto"
+                onClick={handleEditPermission}
+                disabled={loading}
+              >
                 {loading ? "Updating..." : "Update Permission"}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
+        {/* Delete Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -664,12 +690,17 @@ export default function PermissionsPage() {
                 </span>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel
+                className="w-full sm:w-auto"
+                disabled={loading}
+              >
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
+                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={handleDeletePermission}
                 disabled={loading}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {loading ? "Deleting..." : "Delete Permission"}
               </AlertDialogAction>
@@ -677,7 +708,8 @@ export default function PermissionsPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <div className="rounded-md border">
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
               <thead>
@@ -789,19 +821,127 @@ export default function PermissionsPage() {
           </div>
         </div>
 
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {permissions.length === 0 ? (
+            <div className="rounded-md border">
+              <div className="px-4 py-12 text-center text-muted-foreground">
+                <Shield className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <p className="text-lg font-medium mb-2">No permissions found</p>
+                <p className="text-sm">
+                  Create your first permission to get started
+                </p>
+              </div>
+            </div>
+          ) : (
+            permissions
+              .filter((perm) => perm && perm._id)
+              .map((perm) => {
+                const assignedRoles = getAssignedRoles(perm._id);
+                return (
+                  <div
+                    key={perm._id}
+                    className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
+                  >
+                    {/* Resource & Action */}
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-semibold text-base capitalize">
+                          {perm.resource}
+                        </span>
+                        <span className="text-muted-foreground">→</span>
+                        <span className="font-medium text-primary capitalize">
+                          {perm.action}
+                        </span>
+                      </div>
+                      <code className="text-xs bg-muted px-2 py-1 rounded font-mono text-muted-foreground">
+                        {perm.key}
+                      </code>
+                    </div>
+
+                    {/* Description */}
+                    {perm.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {perm.description}
+                      </p>
+                    )}
+
+                    {/* Assigned Roles */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Assigned Roles
+                      </p>
+                      {assignedRoles.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {assignedRoles.map((role, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium"
+                            >
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          No roles assigned
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openEditDialog(perm)}
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openDeleteDialog(perm)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+          )}
+        </div>
+
+        {/* Footer Statistics - Responsive */}
         {permissions.length > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <p>
-              Total Permissions:{" "}
-              <span className="font-medium">{permissions.length}</span>
-            </p>
-            <p>
-              Total Roles: <span className="font-medium">{roles.length}</span>
-            </p>
-            <p>
-              Total Assignments:{" "}
-              <span className="font-medium">{assignments.length}</span>
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Total Permissions
+              </p>
+              <p className="text-lg sm:text-xl font-bold">
+                {permissions.length}
+              </p>
+            </div>
+            <div className="text-center sm:border-x">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Total Roles
+              </p>
+              <p className="text-lg sm:text-xl font-bold">{roles.length}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Total Assignments
+              </p>
+              <p className="text-lg sm:text-xl font-bold">
+                {assignments.length}
+              </p>
+            </div>
           </div>
         )}
       </div>

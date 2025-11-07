@@ -16,7 +16,15 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
-import { Trash2, Pencil, FileText, Plus, Loader2 } from "lucide-react";
+import {
+  Trash2,
+  Pencil,
+  FileText,
+  Plus,
+  Loader2,
+  User,
+  Calendar,
+} from "lucide-react";
 import { usePermissions } from "@/hooks/usePermission";
 
 interface PostAuthor {
@@ -174,13 +182,13 @@ export default function PostsPage() {
     return (
       <DashboardLayout>
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <FileText className="h-8 w-8" />
+              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                <FileText className="h-6 w-6 sm:h-8 sm:w-8" />
                 Posts Management
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-muted-foreground mt-2 text-sm sm:text-base">
                 Manage your blog posts and articles
               </p>
             </div>
@@ -203,23 +211,24 @@ export default function PostsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <FileText className="h-8 w-8" />
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+              <FileText className="h-6 w-6 sm:h-8 sm:w-8" />
               Posts Management
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
               Manage your blog posts and articles
             </p>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-4">
-          <Link href="/dashboard/posts/new">
+        {/* Action Buttons - Responsive */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Link href="/dashboard/posts/new" className="w-full sm:w-auto">
             <Button
+              className="w-full sm:w-auto"
               disabled={!canCreatePosts}
               title={!canCreatePosts ? "You need posts.create permission" : ""}
             >
@@ -239,7 +248,7 @@ export default function PostsPage() {
             }
           }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -260,14 +269,17 @@ export default function PostsPage() {
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel
+                disabled={isDeleting}
+                className="w-full sm:w-auto"
+              >
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {isDeleting ? "Deleting..." : "Delete Post"}
               </AlertDialogAction>
@@ -275,8 +287,8 @@ export default function PostsPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Posts Table */}
-        <div className="rounded-md border">
+        {/* Posts - Desktop Table View */}
+        <div className="hidden md:block rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
               <thead>
@@ -404,24 +416,147 @@ export default function PostsPage() {
           </div>
         </div>
 
-        {/* Footer Statistics */}
+        {/* Posts - Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {posts.length === 0 ? (
+            <div className="rounded-md border">
+              <div className="px-4 py-12 text-center text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <p className="text-lg font-medium mb-2">No posts found</p>
+                <p className="text-sm mb-4">
+                  {canCreatePosts
+                    ? "Create your first post to get started"
+                    : "You may not have permission to create posts"}
+                </p>
+                {canCreatePosts && (
+                  <Link href="/dashboard/posts/new">
+                    <Button className="w-full sm:w-auto">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Create Post
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </div>
+          ) : (
+            posts.map((post) => {
+              const isAuthor =
+                currentUserId && post.author_id?._id === currentUserId;
+              const canEditThis = canUpdatePosts || !!isAuthor;
+              const canDeleteThis = canDeleteAnyPost || !!isAuthor;
+
+              const created =
+                post.createdAt || post.created_at
+                  ? new Date(
+                      post.createdAt ?? post.created_at!
+                    ).toLocaleDateString()
+                  : "—";
+
+              return (
+                <div
+                  key={post._id}
+                  className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
+                >
+                  {/* Title & Status */}
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="font-semibold text-base line-clamp-2 flex-1">
+                      {post.title}
+                    </h3>
+                    <span
+                      className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${
+                        post.status === "published"
+                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                      }`}
+                    >
+                      {post.status}
+                    </span>
+                  </div>
+
+                  {/* Author & Date */}
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5" />
+                      <span>{post.author_id?.name || "Unknown"}</span>
+                    </div>
+                    <span className="hidden sm:inline">•</span>
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span>{created}</span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 pt-2">
+                    <Link
+                      href={`/dashboard/posts/edit/${post.slug}`}
+                      className="flex-1"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={!canEditThis}
+                        title={
+                          !canEditThis
+                            ? "You need posts.update or be the author"
+                            : "Edit post"
+                        }
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={!canDeleteThis}
+                      title={
+                        !canDeleteThis
+                          ? "You need posts.delete or be the author"
+                          : "Delete post"
+                      }
+                      onClick={() => {
+                        setDeleteError(null);
+                        setDeleteSlug(post.slug);
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer Statistics - Responsive */}
         {posts.length > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <p>
-              Total Posts: <span className="font-medium">{posts.length}</span>
-            </p>
-            <p>
-              Published:{" "}
-              <span className="font-medium text-green-600 dark:text-green-400">
+          <div className="grid grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Total Posts
+              </p>
+              <p className="text-lg sm:text-xl font-bold">{posts.length}</p>
+            </div>
+            <div className="text-center border-x">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Published
+              </p>
+              <p className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
                 {publishedCount}
-              </span>
-            </p>
-            <p>
-              Drafts:{" "}
-              <span className="font-medium text-yellow-600 dark:text-yellow-400">
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Drafts
+              </p>
+              <p className="text-lg sm:text-xl font-bold text-yellow-600 dark:text-yellow-400">
                 {draftCount}
-              </span>
-            </p>
+              </p>
+            </div>
           </div>
         )}
       </div>

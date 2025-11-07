@@ -39,9 +39,10 @@ import {
   Pencil,
   Trash2,
   Plus,
-  Users,
+  Users as UsersIcon,
   ShieldCheck,
   Loader2,
+  Key,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -448,27 +449,29 @@ export default function RolesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <ShieldCheck className="h-8 w-8" />
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8" />
               Roles Management
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
               Manage user roles and assign them to users
             </p>
           </div>
         </div>
 
-        <div className="flex gap-4">
+        {/* Action Buttons - Responsive */}
+        <div className="flex flex-col sm:flex-row gap-3">
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="w-full sm:w-auto">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Role
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Create New Role</DialogTitle>
                 <DialogDescription>
@@ -477,7 +480,9 @@ export default function RolesPage() {
               </DialogHeader>
               <div className="flex flex-col gap-4 mt-4">
                 <div>
-                  <Label htmlFor="role-title">Role Title *</Label>
+                  <Label htmlFor="role-title" className="text-sm sm:text-base">
+                    Role Title *
+                  </Label>
                   <Input
                     id="role-title"
                     placeholder="e.g., Content Manager"
@@ -486,7 +491,12 @@ export default function RolesPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="role-description">Description</Label>
+                  <Label
+                    htmlFor="role-description"
+                    className="text-sm sm:text-base"
+                  >
+                    Description
+                  </Label>
                   <Input
                     id="role-description"
                     placeholder="Describe the role's purpose (optional)"
@@ -495,9 +505,10 @@ export default function RolesPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     setCreateDialogOpen(false);
                     setNewRoleTitle("");
@@ -508,6 +519,7 @@ export default function RolesPage() {
                   Cancel
                 </Button>
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={handleCreateRole}
                   disabled={loading || !newRoleTitle.trim()}
                 >
@@ -519,12 +531,12 @@ export default function RolesPage() {
 
           <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
-                <Users className="mr-2 h-4 w-4" />
+              <Button variant="outline" className="w-full sm:w-auto">
+                <UsersIcon className="mr-2 h-4 w-4" />
                 Assign Role to User
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="max-w-[90vw] sm:max-w-[425px]">
               <DialogHeader>
                 <DialogTitle>Assign Role to User</DialogTitle>
                 <DialogDescription>
@@ -534,7 +546,9 @@ export default function RolesPage() {
 
               <div className="flex flex-col gap-4 mt-4">
                 <div>
-                  <Label htmlFor="select-user">Select User *</Label>
+                  <Label htmlFor="select-user" className="text-sm sm:text-base">
+                    Select User *
+                  </Label>
                   <Select onValueChange={setSelectedUser} value={selectedUser}>
                     <SelectTrigger id="select-user">
                       <SelectValue placeholder="Select User" />
@@ -558,7 +572,9 @@ export default function RolesPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="select-role">Select Role *</Label>
+                  <Label htmlFor="select-role" className="text-sm sm:text-base">
+                    Select Role *
+                  </Label>
                   <Select onValueChange={setSelectedRole} value={selectedRole}>
                     <SelectTrigger id="select-role">
                       <SelectValue placeholder="Select Role" />
@@ -582,9 +598,10 @@ export default function RolesPage() {
                 </div>
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     setAssignDialogOpen(false);
                     setSelectedUser("");
@@ -595,6 +612,7 @@ export default function RolesPage() {
                   Cancel
                 </Button>
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={handleAssignRole}
                   disabled={!selectedUser || !selectedRole || loading}
                 >
@@ -605,8 +623,9 @@ export default function RolesPage() {
           </Dialog>
         </div>
 
+        {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Edit Role</DialogTitle>
               <DialogDescription>
@@ -616,7 +635,9 @@ export default function RolesPage() {
             {editingRole && (
               <div className="flex flex-col gap-4 mt-4">
                 <div>
-                  <Label htmlFor="edit-title">Role Title *</Label>
+                  <Label htmlFor="edit-title" className="text-sm sm:text-base">
+                    Role Title *
+                  </Label>
                   <Input
                     id="edit-title"
                     value={editTitle}
@@ -625,7 +646,9 @@ export default function RolesPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-desc">Description</Label>
+                  <Label htmlFor="edit-desc" className="text-sm sm:text-base">
+                    Description
+                  </Label>
                   <Input
                     id="edit-desc"
                     value={editDescription}
@@ -634,7 +657,9 @@ export default function RolesPage() {
                   />
                 </div>
                 <div>
-                  <Label>Key (Auto-generated)</Label>
+                  <Label className="text-sm sm:text-base">
+                    Key (Auto-generated)
+                  </Label>
                   <Input
                     value={editingRole.key}
                     disabled
@@ -643,9 +668,10 @@ export default function RolesPage() {
                 </div>
               </div>
             )}
-            <DialogFooter>
+            <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setEditDialogOpen(false);
                   setEditingRole(null);
@@ -657,6 +683,7 @@ export default function RolesPage() {
                 Cancel
               </Button>
               <Button
+                className="w-full sm:w-auto"
                 onClick={handleEditRole}
                 disabled={loading || !editTitle.trim()}
               >
@@ -666,8 +693,9 @@ export default function RolesPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Delete Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -686,12 +714,17 @@ export default function RolesPage() {
                 </span>
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel
+                className="w-full sm:w-auto"
+                disabled={loading}
+              >
+                Cancel
+              </AlertDialogCancel>
               <AlertDialogAction
+                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={handleDeleteRole}
                 disabled={loading}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {loading ? "Deleting..." : "Delete Role"}
               </AlertDialogAction>
@@ -699,7 +732,8 @@ export default function RolesPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <div className="rounded-md border">
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
               <thead>
@@ -842,18 +876,143 @@ export default function RolesPage() {
           </div>
         </div>
 
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {roles.length === 0 ? (
+            <div className="rounded-md border">
+              <div className="px-4 py-12 text-center text-muted-foreground">
+                <ShieldCheck className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <p className="text-lg font-medium mb-2">No roles found</p>
+                <p className="text-sm">Create your first role to get started</p>
+              </div>
+            </div>
+          ) : (
+            roles
+              .filter((role) => role && role._id)
+              .map((role) => {
+                const assignedUsers = getAssignedUsers(role._id);
+                const assignedPermissions = getAssignedPermissions(role._id);
+
+                return (
+                  <div
+                    key={role._id}
+                    className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
+                  >
+                    {/* Role Title & Key */}
+                    <div>
+                      <h3 className="font-semibold text-base mb-1">
+                        {role.title}
+                      </h3>
+                      <code className="text-xs bg-muted px-2 py-1 rounded font-mono text-muted-foreground">
+                        {role.key}
+                      </code>
+                    </div>
+
+                    {/* Description */}
+                    {role.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {role.description}
+                      </p>
+                    )}
+
+                    {/* Users */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                        <UsersIcon className="h-3.5 w-3.5" />
+                        Assigned Users
+                      </p>
+                      {assignedUsers.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {assignedUsers.map((userName, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium"
+                            >
+                              {userName}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          No users assigned
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Permissions */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                        <Key className="h-3.5 w-3.5" />
+                        Permissions
+                      </p>
+                      {assignedPermissions.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {assignedPermissions.map((perm, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
+                            >
+                              {perm}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
+                          No permissions assigned
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openEditDialog(role)}
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openDeleteDialog(role)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })
+          )}
+        </div>
+
+        {/* Footer Statistics - Responsive */}
         {roles.length > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <p>
-              Total Roles: <span className="font-medium">{roles.length}</span>
-            </p>
-            <p>
-              Total Users: <span className="font-medium">{users.length}</span>
-            </p>
-            <p>
-              Total Assignments:{" "}
-              <span className="font-medium">{assignments.length}</span>
-            </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Total Roles
+              </p>
+              <p className="text-lg sm:text-xl font-bold">{roles.length}</p>
+            </div>
+            <div className="text-center sm:border-x">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Total Users
+              </p>
+              <p className="text-lg sm:text-xl font-bold">{users.length}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Total Assignments
+              </p>
+              <p className="text-lg sm:text-xl font-bold">
+                {assignments.length}
+              </p>
+            </div>
           </div>
         )}
       </div>

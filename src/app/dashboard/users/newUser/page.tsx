@@ -106,31 +106,33 @@ export default function NewUserPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <UserPlus className="h-8 w-8" />
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <UserPlus className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8" />
               Create New User
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
               Add a new user to the system
             </p>
           </div>
-          <Link href="/dashboard/users">
-            <Button variant="outline">
+          <Link href="/dashboard/users" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Users
             </Button>
           </Link>
         </div>
 
-        {/* Form Card - Centered */}
+        {/* Form Card - Responsive Container */}
         <div className="max-w-2xl mx-auto">
           <Card>
             <CardHeader>
-              <CardTitle>User Information</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg sm:text-xl">
+                User Information
+              </CardTitle>
+              <CardDescription className="text-sm">
                 Enter the details for the new user. All fields are required.
               </CardDescription>
             </CardHeader>
@@ -138,7 +140,7 @@ export default function NewUserPage() {
               <div className="flex flex-col gap-6">
                 {/* Name Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="name">
+                  <Label htmlFor="name" className="text-sm sm:text-base">
                     Name <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -155,13 +157,15 @@ export default function NewUserPage() {
                     className={errors.name ? "border-destructive" : ""}
                   />
                   {errors.name && (
-                    <p className="text-sm text-destructive">{errors.name}</p>
+                    <p className="text-xs sm:text-sm text-destructive">
+                      {errors.name}
+                    </p>
                   )}
                 </div>
 
                 {/* Email Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="email">
+                  <Label htmlFor="email" className="text-sm sm:text-base">
                     Email <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -179,13 +183,15 @@ export default function NewUserPage() {
                     className={errors.email ? "border-destructive" : ""}
                   />
                   {errors.email && (
-                    <p className="text-sm text-destructive">{errors.email}</p>
+                    <p className="text-xs sm:text-sm text-destructive">
+                      {errors.email}
+                    </p>
                   )}
                 </div>
 
                 {/* Password Field */}
                 <div className="space-y-2">
-                  <Label htmlFor="password">
+                  <Label htmlFor="password" className="text-sm sm:text-base">
                     Password <span className="text-destructive">*</span>
                   </Label>
                   <Input
@@ -203,25 +209,27 @@ export default function NewUserPage() {
                     className={errors.password ? "border-destructive" : ""}
                   />
                   {errors.password && (
-                    <p className="text-sm text-destructive">
+                    <p className="text-xs sm:text-sm text-destructive">
                       {errors.password}
                     </p>
                   )}
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Password must be at least 6 characters long
                   </p>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-3 pt-4">
+                {/* Action Buttons - Responsive */}
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-3 pt-4">
                   <Button
                     variant="outline"
+                    className="w-full sm:w-auto"
                     onClick={() => router.push("/dashboard/users")}
                     disabled={loading}
                   >
                     Cancel
                   </Button>
                   <Button
+                    className="w-full sm:w-auto"
                     onClick={handleCreateUser}
                     disabled={
                       loading || !name.trim() || !email.trim() || !password

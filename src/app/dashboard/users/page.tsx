@@ -36,6 +36,7 @@ import {
   Pencil,
   Trash2,
   ShieldCheck,
+  Mail,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePermissions } from "@/hooks/usePermission";
@@ -355,14 +356,14 @@ export default function UsersPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <Users className="h-8 w-8" />
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+              <Users className="h-6 w-6 sm:h-8 sm:w-8" />
               Users Management
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
               Manage users, assign roles and control access
             </p>
           </div>
@@ -375,10 +376,11 @@ export default function UsersPage() {
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-4">
-          <Link href="/dashboard/users/newUser">
+        {/* Action Buttons - Responsive */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <Link href="/dashboard/users/newUser" className="w-full sm:w-auto">
             <Button
+              className="w-full sm:w-auto"
               disabled={!canCreateUsers || permsLoading}
               title={!canCreateUsers ? "You need users.create permission" : ""}
             >
@@ -402,6 +404,7 @@ export default function UsersPage() {
             <DialogTrigger asChild>
               <Button
                 variant="outline"
+                className="w-full sm:w-auto"
                 disabled={permsLoading || !canAssignRoles}
                 title={
                   !canAssignRoles
@@ -414,7 +417,7 @@ export default function UsersPage() {
               </Button>
             </DialogTrigger>
 
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Assign Role to User</DialogTitle>
                 <DialogDescription>
@@ -502,15 +505,17 @@ export default function UsersPage() {
                 )}
               </div>
 
-              <DialogFooter>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => setDialogOpen(false)}
                   disabled={assigning}
                 >
                   Cancel
                 </Button>
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={handleAssignRole}
                   disabled={
                     assigning ||
@@ -526,7 +531,7 @@ export default function UsersPage() {
           </Dialog>
         </div>
 
-        {/* Delete Confirmation Dialog */}
+        {/* Delete Confirmation Dialog - Responsive */}
         <AlertDialog
           open={!!deleteUserId}
           onOpenChange={(open) => {
@@ -536,7 +541,7 @@ export default function UsersPage() {
             }
           }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -555,14 +560,17 @@ export default function UsersPage() {
                 )}
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel
+                className="w-full sm:w-auto"
+                disabled={isDeleting}
+              >
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
+                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={handleConfirmDelete}
                 disabled={isDeleting || !canDeleteUsers}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               >
                 {isDeleting ? "Deleting..." : "Delete User"}
               </AlertDialogAction>
@@ -570,8 +578,8 @@ export default function UsersPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Users Table */}
-        <div className="rounded-md border">
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
               <thead>
@@ -780,23 +788,201 @@ export default function UsersPage() {
           </div>
         </div>
 
-        {/* Footer Statistics */}
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-4">
+          {users.length === 0 ? (
+            <div className="rounded-md border">
+              <div className="px-4 py-12 text-center text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <p className="text-lg font-medium mb-2">No users found</p>
+                <p className="text-sm">Create your first user to get started</p>
+              </div>
+            </div>
+          ) : (
+            users
+              .filter((user) => user && user._id)
+              .map((user) => (
+                <div
+                  key={user._id}
+                  className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
+                >
+                  {/* Name & Email */}
+                  <div>
+                    <h3 className="font-semibold text-base">{user.name}</h3>
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
+                      <Mail className="h-3.5 w-3.5" />
+                      <span>{user.email}</span>
+                    </div>
+                  </div>
+
+                  {/* Roles */}
+                  {showRolesColumn && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        Roles
+                      </p>
+                      {(() => {
+                        if (
+                          !user.roles ||
+                          !Array.isArray(user.roles) ||
+                          user.roles.length === 0
+                        ) {
+                          return (
+                            <span className="text-muted-foreground text-sm">
+                              No roles assigned
+                            </span>
+                          );
+                        }
+
+                        const validRoles = user.roles
+                          .filter((role) => role && role.title)
+                          .filter(
+                            (role, index, self) =>
+                              index ===
+                              self.findIndex((r) => r.title === role.title)
+                          );
+
+                        return (
+                          <div className="flex flex-wrap gap-1">
+                            {validRoles.map((role, index) => (
+                              <span
+                                key={`user-${user._id}-role-idx-${index}`}
+                                className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium"
+                              >
+                                {role.title}
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Permissions */}
+                  {showPermissionsColumn && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                        Permissions
+                      </p>
+                      {user.permissions && user.permissions.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {(() => {
+                            const validPermissions = user.permissions.filter(
+                              (p) => p && p._id && p.resource && p.action
+                            );
+
+                            const uniquePermissions = validPermissions.filter(
+                              (permission, index, self) =>
+                                index ===
+                                self.findIndex(
+                                  (p) =>
+                                    p.resource === permission.resource &&
+                                    p.action === permission.action
+                                )
+                            );
+
+                            const resourceMap = uniquePermissions.reduce(
+                              (acc, p) => {
+                                if (!acc[p.resource]) {
+                                  acc[p.resource] = new Set<string>();
+                                }
+                                acc[p.resource].add(p.action);
+                                return acc;
+                              },
+                              {} as Record<string, Set<string>>
+                            );
+
+                            const entries = Object.entries(resourceMap);
+                            return (
+                              <>
+                                {entries.map(([resource, actionsSet]) => (
+                                  <span
+                                    key={`${user._id}-perm-${resource}`}
+                                    className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
+                                  >
+                                    {resource} ({actionsSet.size})
+                                  </span>
+                                ))}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">
+                          No permissions
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-2 pt-2">
+                    <Link
+                      href={`/dashboard/users/edit/${user._id}`}
+                      className="flex-1"
+                    >
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={!canUpdateUsers || permsLoading}
+                        title={
+                          !canUpdateUsers
+                            ? "You need users.update"
+                            : "Edit user"
+                        }
+                      >
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      disabled={!canDeleteUsers || permsLoading}
+                      title={
+                        !canDeleteUsers
+                          ? "You need users.delete"
+                          : "Delete user"
+                      }
+                      onClick={() => openDeleteDialog(user._id)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))
+          )}
+        </div>
+
+        {/* Footer Statistics - Responsive */}
         {users.length > 0 && (
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <p>
-              Total Users: <span className="font-medium">{users.length}</span>
-            </p>
-            {showRolesColumn && (
-              <p>
-                Total Role Assignments:{" "}
-                <span className="font-medium">{totalRoleAssignments}</span>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Total Users
               </p>
+              <p className="text-lg sm:text-xl font-bold">{users.length}</p>
+            </div>
+            {showRolesColumn && (
+              <div className="text-center sm:border-x">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                  Role Assignments
+                </p>
+                <p className="text-lg sm:text-xl font-bold">
+                  {totalRoleAssignments}
+                </p>
+              </div>
             )}
             {showRolesColumn && (
-              <p>
-                Available Roles:{" "}
-                <span className="font-medium">{roles.length}</span>
-              </p>
+              <div className="text-center">
+                <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                  Available Roles
+                </p>
+                <p className="text-lg sm:text-xl font-bold">{roles.length}</p>
+              </div>
             )}
           </div>
         )}

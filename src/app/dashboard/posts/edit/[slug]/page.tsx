@@ -15,13 +15,6 @@ interface ApiResponse {
   data?: Post;
 }
 
-interface PostFormData {
-  title: string;
-  content: string;
-  status: "draft" | "published";
-  slug: string;
-}
-
 export default function EditPostPage() {
   const params = useParams<{ slug: string }>();
   const slug = params.slug;
@@ -68,33 +61,33 @@ export default function EditPostPage() {
     return (
       <DashboardLayout>
         <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <FileText className="h-8 w-8" />
+          {/* Header - Responsive */}
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+                <FileText className="h-6 w-6 sm:h-8 sm:w-8" />
                 Edit Post
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-muted-foreground mt-2 text-sm sm:text-base">
                 Update the post details below
               </p>
             </div>
-            <Link href="/dashboard/posts">
-              <Button variant="outline">
+            <Link href="/dashboard/posts" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Back to Posts
               </Button>
             </Link>
           </div>
 
-          {/* Error State */}
+          {/* Error State - Responsive */}
           <div className="rounded-md border">
             <div className="px-4 py-12 text-center">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-20 text-destructive" />
-              <h2 className="text-xl font-semibold text-destructive mb-2">
+              <h2 className="text-lg sm:text-xl font-semibold text-destructive mb-2">
                 {error || "Post not found"}
               </h2>
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="text-sm text-muted-foreground mb-4 max-w-md mx-auto">
                 The post you&apos;re looking for doesn&apos;t exist or you
                 don&apos;t have permission to edit it.
               </p>
@@ -111,29 +104,22 @@ export default function EditPostPage() {
     );
   }
 
-  const initialData: PostFormData = {
-    title: post.title,
-    content: post.content,
-    status: post.status,
-    slug: post.slug,
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <FileText className="h-8 w-8" />
+        {/* Header - Responsive */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+              <FileText className="h-6 w-6 sm:h-8 sm:w-8" />
               Edit Post
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
               Update the post details below
             </p>
           </div>
-          <Link href="/dashboard/posts">
-            <Button variant="outline">
+          <Link href="/dashboard/posts" className="w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Posts
             </Button>
@@ -141,7 +127,7 @@ export default function EditPostPage() {
         </div>
 
         {/* Post Form */}
-        <PostForm mode="edit" slug={post.slug} initialData={initialData} />
+        <PostForm mode="edit" initialData={post} />
       </div>
     </DashboardLayout>
   );
