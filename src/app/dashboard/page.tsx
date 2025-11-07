@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { usePermissions } from "@/hooks/usePermission";
+import { PERMISSION_KEYS } from "@/lib/constants/permissions";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -42,7 +44,7 @@ interface Post {
   title: string;
   slug: string;
   status: string;
-  createdAt: string;
+  created_at: string;
   author_id: {
     name: string;
   };
@@ -67,7 +69,12 @@ async function safeJson<T>(res: Response): Promise<T | null> {
 const COLORS = ["#10b981", "#f59e0b", "#3b82f6", "#ef4444"];
 
 export default function DashboardPage() {
-  const { permissions, loading: permsLoading } = usePermissions();
+  const router = useRouter();
+  const {
+    permissions,
+    loading: permsLoading,
+    hasPermission,
+  } = usePermissions();
   const { toast } = useToast();
 
   const [stats, setStats] = useState<DashboardStats>({
@@ -81,47 +88,77 @@ export default function DashboardPage() {
   const [recentPosts, setRecentPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const perms = useMemo(
-    () => (Array.isArray(permissions) ? permissions : []),
-    [permissions]
+  // Check permissions
+  const canReadUsers = hasPermission(PERMISSION_KEYS.USERS_READ);
+  const canReadPosts = hasPermission(PERMISSION_KEYS.POSTS_READ);
+  const canReadRoles = hasPermission(PERMISSION_KEYS.ROLES_READ);
+  const canReadPermissions = hasPermission(PERMISSION_KEYS.PERMISSIONS_READ);
+
+  const canManagePosts = useMemo(
+    () =>
+      hasPermission(PERMISSION_KEYS.POSTS_CREATE) ||
+      hasPermission(PERMISSION_KEYS.POSTS_UPDATE) ||
+      hasPermission(PERMISSION_KEYS.POSTS_DELETE),
+    [hasPermission]
   );
 
-  const hasKey = (resource: string, action: string): boolean =>
-    perms.some(
-      (p) =>
-        typeof p === "string" &&
-        (p === `${resource}.${action}` || p === `${resource}:${action}`)
+  const canManageUsers = useMemo(
+    () =>
+      hasPermission(PERMISSION_KEYS.USERS_CREATE) ||
+      hasPermission(PERMISSION_KEYS.USERS_READ) ||
+      hasPermission(PERMISSION_KEYS.USERS_UPDATE) ||
+      hasPermission(PERMISSION_KEYS.USERS_DELETE),
+    [hasPermission]
+  );
+
+  const canManageRoles = useMemo(
+    () =>
+      hasPermission(PERMISSION_KEYS.ROLES_CREATE) ||
+      hasPermission(PERMISSION_KEYS.ROLES_READ) ||
+      hasPermission(PERMISSION_KEYS.ROLES_UPDATE) ||
+      hasPermission(PERMISSION_KEYS.ROLES_DELETE),
+    [hasPermission]
+  );
+
+  const canManagePermissions = useMemo(
+    () =>
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_CREATE) ||
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_READ) ||
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_UPDATE) ||
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_DELETE),
+    [hasPermission]
+  );
+
+  // Check if user only has posts.read permission
+  const hasOnlyPostsRead = useMemo(() => {
+    return (
+      permissions.length === 1 && permissions[0] === PERMISSION_KEYS.POSTS_READ
     );
+  }, [permissions]);
 
-  const hasAny = (resource: string): boolean =>
-    perms.some(
-      (p) =>
-        typeof p === "string" &&
-        (p.startsWith(`${resource}.`) || p.startsWith(`${resource}:`))
+  // Check if user has any dashboard access
+  const hasDashboardAccess = useMemo(() => {
+    return (
+      canManageUsers || canManageRoles || canManagePermissions || canManagePosts
     );
+  }, [canManageUsers, canManageRoles, canManagePermissions, canManagePosts]);
 
-  const canManagePosts = hasAny("posts");
-  const canManageUsers = hasAny("users");
-  const canManageRoles = hasAny("roles");
-  const canManagePermissions = hasAny("permissions");
+  const nothingToShow = useMemo(
+    () => !permsLoading && permissions.length === 0,
+    [permsLoading, permissions.length]
+  );
 
-  const canReadUsers = hasKey("users", "read");
-  const canReadPosts = hasKey("posts", "read");
-  const canReadRoles = hasKey("roles", "read");
-  const canReadPermissions = hasKey("permissions", "read");
-
-  const nothingToShow =
-    perms.length === 0 ||
-    !(
-      canManagePosts ||
-      canManageUsers ||
-      canManageRoles ||
-      canManagePermissions
-    );
+  // Redirect users with only posts.read or no dashboard access to home page
+  useEffect(() => {
+    if (!permsLoading && (hasOnlyPostsRead || !hasDashboardAccess)) {
+      router.replace("/");
+    }
+  }, [permsLoading, hasOnlyPostsRead, hasDashboardAccess, router]);
 
   useEffect(() => {
     async function fetchDashboardData() {
-      if (permsLoading) return;
+      if (permsLoading || hasOnlyPostsRead || !hasDashboardAccess) return;
+
       setLoading(true);
 
       try {
@@ -131,6 +168,11 @@ export default function DashboardPage() {
         if (canReadPosts) promises.push(fetch("/api/posts"));
         if (canReadRoles) promises.push(fetch("/api/roles"));
         if (canReadPermissions) promises.push(fetch("/api/permissions"));
+
+        if (promises.length === 0) {
+          setLoading(false);
+          return;
+        }
 
         const responses = await Promise.all(promises);
         let userCount = 0;
@@ -142,12 +184,14 @@ export default function DashboardPage() {
         let posts: Post[] = [];
 
         let idx = 0;
+
         if (canReadUsers) {
           const data = await safeJson<ApiResponse<unknown[]>>(responses[idx++]);
           if (data?.success && Array.isArray(data.data)) {
             userCount = data.data.length;
           }
         }
+
         if (canReadPosts) {
           const data = await safeJson<ApiResponse<Post[]>>(responses[idx++]);
           if (data?.success && Array.isArray(data.data)) {
@@ -157,12 +201,14 @@ export default function DashboardPage() {
             draft = posts.filter((p) => p.status === "draft").length;
           }
         }
+
         if (canReadRoles) {
           const data = await safeJson<ApiResponse<unknown[]>>(responses[idx++]);
           if (data?.success && Array.isArray(data.data)) {
             roleCount = data.data.length;
           }
         }
+
         if (canReadPermissions) {
           const data = await safeJson<ApiResponse<unknown[]>>(responses[idx++]);
           if (data?.success && Array.isArray(data.data)) {
@@ -195,6 +241,8 @@ export default function DashboardPage() {
     void fetchDashboardData();
   }, [
     permsLoading,
+    hasOnlyPostsRead,
+    hasDashboardAccess,
     canReadUsers,
     canReadPosts,
     canReadRoles,
@@ -202,19 +250,37 @@ export default function DashboardPage() {
     toast,
   ]);
 
-  const resourceData = [
-    { name: "Users", value: stats.totalUsers },
-    { name: "Posts", value: stats.totalPosts },
-    { name: "Roles", value: stats.totalRoles },
-    { name: "Permissions", value: stats.totalPermissions },
-  ];
+  const resourceData = useMemo(
+    () => [
+      { name: "Users", value: stats.totalUsers },
+      { name: "Posts", value: stats.totalPosts },
+      { name: "Roles", value: stats.totalRoles },
+      { name: "Permissions", value: stats.totalPermissions },
+    ],
+    [stats]
+  );
 
-  const postStatusData = [
-    { name: "Published", value: stats.publishedPosts },
-    { name: "Draft", value: stats.draftPosts },
-  ];
+  const postStatusData = useMemo(
+    () => [
+      { name: "Published", value: stats.publishedPosts },
+      { name: "Draft", value: stats.draftPosts },
+    ],
+    [stats.publishedPosts, stats.draftPosts]
+  );
 
   const uiLoading = loading || permsLoading;
+
+  // Show loading while checking permissions or redirecting
+  if (permsLoading || hasOnlyPostsRead || !hasDashboardAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -244,6 +310,7 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <>
+            {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {canReadUsers && (
                 <Card>
@@ -316,6 +383,7 @@ export default function DashboardPage() {
               )}
             </div>
 
+            {/* Charts */}
             <div className="grid gap-6 md:grid-cols-2">
               {(canReadUsers ||
                 canReadPosts ||
@@ -362,7 +430,7 @@ export default function DashboardPage() {
                           dataKey="value"
                           label
                         >
-                          {postStatusData.map((entry, index) => (
+                          {postStatusData.map((_, index) => (
                             <Cell
                               key={`cell-${index}`}
                               fill={COLORS[index % COLORS.length]}
@@ -378,6 +446,7 @@ export default function DashboardPage() {
               )}
             </div>
 
+            {/* Recent Posts */}
             {canReadPosts && recentPosts.length > 0 && (
               <Card>
                 <CardHeader>
@@ -399,14 +468,14 @@ export default function DashboardPage() {
                           </Link>
                           <p className="text-sm text-muted-foreground">
                             By {post.author_id?.name || "Unknown"} •{" "}
-                            {new Date(post.createdAt).toLocaleDateString()}
+                            {new Date(post.created_at).toLocaleDateString()}
                           </p>
                         </div>
                         <span
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             post.status === "published"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-yellow-100 text-yellow-800"
+                              ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                              : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                           }`}
                         >
                           {post.status}
@@ -418,6 +487,7 @@ export default function DashboardPage() {
               </Card>
             )}
 
+            {/* Quick Access */}
             <div>
               <h2 className="text-xl font-semibold mb-4">Quick Access</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

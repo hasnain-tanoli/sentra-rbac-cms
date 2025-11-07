@@ -57,16 +57,31 @@ export async function GET(req: Request) {
             return respond(false, "Unauthorized. Please log in.", 401);
         }
 
-        const canRead = await hasPermission(session.user.id, 'users', 'read');
-        if (!canRead) {
-            return respond(false, "Forbidden.", 403);
-        }
-
         await connectDB();
 
         const { searchParams } = new URL(req.url);
         const id = searchParams.get("id");
         const email = searchParams.get("email");
+
+        const requestedEmail = email?.toLowerCase();
+        const requestedId = id;
+        const isOwnProfile = 
+            (requestedId && session.user.id === requestedId) || 
+            (requestedEmail && session.user.email?.toLowerCase() === requestedEmail);
+
+        if ((id || email) && !isOwnProfile) {
+            const canRead = await hasPermission(session.user.id, 'users', 'read');
+            if (!canRead) {
+                return respond(false, "Forbidden. You don't have permission to view other users.", 403);
+            }
+        }
+
+        if (!id && !email) {
+            const canRead = await hasPermission(session.user.id, 'users', 'read');
+            if (!canRead) {
+                return respond(false, "Forbidden. You don't have permission to list users.", 403);
+            }
+        }
 
         const matchStage =
             id && mongoose.Types.ObjectId.isValid(id)

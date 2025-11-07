@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,20 +13,140 @@ import {
 } from "@/components/ui/sheet";
 import Link from "next/link";
 import Image from "next/image";
-import { Home, User, Menu, FileText, Users, Key, Shield } from "lucide-react";
+import {
+  Home,
+  User,
+  Menu,
+  FileText,
+  Users,
+  Key,
+  Shield,
+  Loader2,
+} from "lucide-react";
 import { usePathname } from "next/navigation";
+import { usePermissions } from "@/hooks/usePermission";
+import { PERMISSION_KEYS } from "@/lib/constants/permissions";
+
+interface MenuItem {
+  name: string;
+  href: string;
+  icon: React.ElementType;
+  permission?: string;
+  requireManagePermissions?: boolean;
+}
 
 export default function HeaderDashboard() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const { permissions, hasPermission, loading } = usePermissions();
 
-  const menuItems = [
-    { name: "Dashboard", href: "/dashboard", icon: Home },
-    { name: "Posts", href: "/dashboard/posts", icon: FileText },
-    { name: "Users", href: "/dashboard/users", icon: Users },
-    { name: "Roles", href: "/dashboard/roles", icon: Key },
-    { name: "Permissions", href: "/dashboard/permissions", icon: Shield },
-  ];
+  const menuItems: MenuItem[] = useMemo(
+    () => [
+      {
+        name: "Dashboard",
+        href: "/dashboard",
+        icon: Home,
+        requireManagePermissions: true,
+      },
+      {
+        name: "Posts",
+        href: "/dashboard/posts",
+        icon: FileText,
+        requireManagePermissions: true,
+      },
+      {
+        name: "Users",
+        href: "/dashboard/users",
+        icon: Users,
+        permission: PERMISSION_KEYS.USERS_READ,
+      },
+      {
+        name: "Roles",
+        href: "/dashboard/roles",
+        icon: Key,
+        permission: PERMISSION_KEYS.ROLES_READ,
+      },
+      {
+        name: "Permissions",
+        href: "/dashboard/permissions",
+        icon: Shield,
+        permission: PERMISSION_KEYS.PERMISSIONS_READ,
+      },
+    ],
+    []
+  );
+
+  const hasOnlyPostsRead = useMemo(
+    () =>
+      permissions.length === 1 && permissions[0] === PERMISSION_KEYS.POSTS_READ,
+    [permissions]
+  );
+
+  const canManagePosts = useMemo(
+    () =>
+      hasPermission(PERMISSION_KEYS.POSTS_CREATE) ||
+      hasPermission(PERMISSION_KEYS.POSTS_UPDATE) ||
+      hasPermission(PERMISSION_KEYS.POSTS_DELETE),
+    [hasPermission]
+  );
+
+  const hasDashboardAccess = useMemo(() => {
+    const canManageUsers =
+      hasPermission(PERMISSION_KEYS.USERS_CREATE) ||
+      hasPermission(PERMISSION_KEYS.USERS_READ) ||
+      hasPermission(PERMISSION_KEYS.USERS_UPDATE) ||
+      hasPermission(PERMISSION_KEYS.USERS_DELETE);
+
+    const canManageRoles =
+      hasPermission(PERMISSION_KEYS.ROLES_CREATE) ||
+      hasPermission(PERMISSION_KEYS.ROLES_READ) ||
+      hasPermission(PERMISSION_KEYS.ROLES_UPDATE) ||
+      hasPermission(PERMISSION_KEYS.ROLES_DELETE);
+
+    const canManagePermissions =
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_CREATE) ||
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_READ) ||
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_UPDATE) ||
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_DELETE);
+
+    return (
+      canManagePosts || canManageUsers || canManageRoles || canManagePermissions
+    );
+  }, [hasPermission, canManagePosts]);
+
+  const visibleMenuItems = useMemo(
+    () =>
+      menuItems.filter((item) => {
+        // Hide all items for users with only posts.read
+        if (hasOnlyPostsRead) {
+          return false;
+        }
+
+        // For items requiring manage permissions
+        if (item.requireManagePermissions) {
+          if (item.name === "Posts") {
+            return canManagePosts;
+          }
+          if (item.name === "Dashboard") {
+            return hasDashboardAccess;
+          }
+        }
+
+        // For items with specific permission requirements
+        if (item.permission) {
+          return hasPermission(item.permission);
+        }
+
+        return true;
+      }),
+    [
+      menuItems,
+      hasOnlyPostsRead,
+      canManagePosts,
+      hasDashboardAccess,
+      hasPermission,
+    ]
+  );
 
   return (
     <header className="w-full border-b bg-background/80 backdrop-blur-md">
@@ -46,7 +166,6 @@ export default function HeaderDashboard() {
                 <SheetTitle className="sr-only">
                   Dashboard Navigation
                 </SheetTitle>
-                {/* ✅ Added SheetDescription for accessibility */}
                 <SheetDescription className="sr-only">
                   Navigate through dashboard pages and manage your account
                 </SheetDescription>
@@ -60,31 +179,43 @@ export default function HeaderDashboard() {
                   width={150}
                   height={35}
                   priority
-                  style={{ height: "auto" }} // ✅ Fixed aspect ratio warning
+                  style={{ height: "auto" }}
                 />
               </div>
 
               {/* Navigation Links */}
-              <nav className="flex flex-col gap-2 mb-6">
-                {menuItems.map((item) => {
-                  const isActive = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      onClick={() => setOpen(false)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-md font-medium transition ${
-                        isActive
-                          ? "bg-primary text-white"
-                          : "text-foreground hover:bg-primary/10"
-                      }`}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      {item.name}
-                    </Link>
-                  );
-                })}
-              </nav>
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : visibleMenuItems.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted-foreground">
+                    No accessible pages
+                  </p>
+                </div>
+              ) : (
+                <nav className="flex flex-col gap-2 mb-6">
+                  {visibleMenuItems.map((item) => {
+                    const isActive = pathname === item.href;
+                    return (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => setOpen(false)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-md font-medium transition ${
+                          isActive
+                            ? "bg-primary text-white"
+                            : "text-foreground hover:bg-primary/10"
+                        }`}
+                      >
+                        <item.icon className="h-5 w-5" />
+                        {item.name}
+                      </Link>
+                    );
+                  })}
+                </nav>
+              )}
 
               {/* Mobile Actions */}
               <div className="border-t pt-4 mt-auto flex flex-col gap-2">
@@ -137,7 +268,7 @@ export default function HeaderDashboard() {
             width={100}
             height={25}
             priority
-            style={{ height: "auto" }} // ✅ Fixed aspect ratio warning
+            style={{ height: "auto" }}
           />
         </div>
 

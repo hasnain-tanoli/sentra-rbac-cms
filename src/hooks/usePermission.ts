@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession } from "next-auth/react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface Permission {
     key: string;
@@ -12,6 +12,10 @@ interface Permission {
 interface UserPermissions {
     permissions: string[];
     loading: boolean;
+    hasPermission: (key: string) => boolean;
+    hasAnyPermission: (keys: string[]) => boolean;
+    hasAllPermissions: (keys: string[]) => boolean;
+    hasPermissionPattern: (pattern: string) => boolean;
 }
 
 export function usePermissions(): UserPermissions {
@@ -21,48 +25,88 @@ export function usePermissions(): UserPermissions {
 
     useEffect(() => {
         async function fetchPermissions() {
-            if (!session?.user?.id) {
+            if (!session?.user?.email) {
                 setPermissions([]);
                 setLoading(false);
                 return;
             }
 
             try {
-                const res = await fetch(`/api/users/${session.user.id}/permissions`);
+                const res = await fetch(`/api/users?email=${session.user.email}`);
                 const data = await res.json();
 
-                if (data.success && data.data) {
-                    setPermissions(data.data.map((p: Permission) => p.key));
+                if (data.success && data.data?.permissions) {
+                    const permKeys = data.data.permissions.map((p: Permission) => p.key);
+                    setPermissions(permKeys);
+                } else {
+                    setPermissions([]);
                 }
             } catch (error) {
                 console.error("Failed to fetch permissions:", error);
+                setPermissions([]);
             } finally {
                 setLoading(false);
             }
         }
 
         fetchPermissions();
-    }, [session?.user?.id]);
+    }, [session?.user?.email]);
 
-    return { permissions, loading };
+    const hasPermission = useCallback(
+        (key: string): boolean => {
+            return permissions.includes(key);
+        },
+        [permissions]
+    );
+
+    const hasAnyPermission = useCallback(
+        (keys: string[]): boolean => {
+            return keys.some((key) => permissions.includes(key));
+        },
+        [permissions]
+    );
+
+    const hasAllPermissions = useCallback(
+        (keys: string[]): boolean => {
+            return keys.every((key) => permissions.includes(key));
+        },
+        [permissions]
+    );
+
+    const hasPermissionPattern = useCallback(
+        (pattern: string): boolean => {
+            return permissions.some((p) => p.startsWith(pattern));
+        },
+        [permissions]
+    );
+
+    return {
+        permissions,
+        loading,
+        hasPermission,
+        hasAnyPermission,
+        hasAllPermissions,
+        hasPermissionPattern,
+    };
 }
 
+// Individual hooks for convenience
 export function useHasPermission(permissionKey: string): boolean {
-    const { permissions } = usePermissions();
-    return permissions.includes(permissionKey);
+    const { hasPermission } = usePermissions();
+    return hasPermission(permissionKey);
 }
 
 export function useHasAnyPermission(permissionKeys: string[]): boolean {
-    const { permissions } = usePermissions();
-    return permissionKeys.some(key => permissions.includes(key));
+    const { hasAnyPermission } = usePermissions();
+    return hasAnyPermission(permissionKeys);
 }
 
 export function useHasAllPermissions(permissionKeys: string[]): boolean {
-    const { permissions } = usePermissions();
-    return permissionKeys.every(key => permissions.includes(key));
+    const { hasAllPermissions } = usePermissions();
+    return hasAllPermissions(permissionKeys);
 }
 
 export function useHasPermissionPattern(pattern: string): boolean {
-    const { permissions } = usePermissions();
-    return permissions.some(p => p.startsWith(pattern));
+    const { hasPermissionPattern } = usePermissions();
+    return hasPermissionPattern(pattern);
 }
