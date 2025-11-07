@@ -24,7 +24,10 @@ async function getPosts(): Promise<Post[]> {
       (post) => post.status === "published"
     );
 
-    return publishedPosts;
+    return publishedPosts.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   } catch (error) {
     console.error("Error fetching posts:", error);
     return [];
@@ -32,7 +35,9 @@ async function getPosts(): Promise<Post[]> {
 }
 
 export default async function HomePage() {
-  const posts = await getPosts();
+  const allPosts = await getPosts();
+
+  const latestPosts = allPosts.slice(0, 6);
 
   return (
     <>
@@ -73,7 +78,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Posts Section */}
         <section className="w-full space-y-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
@@ -85,7 +89,7 @@ export default async function HomePage() {
                 Explore our latest articles and updates
               </p>
             </div>
-            {posts.length > 0 && (
+            {allPosts.length > 0 && (
               <Link href="/posts">
                 <Button variant="ghost" className="gap-2">
                   View All
@@ -95,7 +99,7 @@ export default async function HomePage() {
             )}
           </div>
 
-          {posts.length === 0 ? (
+          {latestPosts.length === 0 ? (
             <div className="rounded-md border">
               <div className="px-4 py-16 text-center">
                 <FileText className="h-16 w-16 mx-auto mb-6 opacity-20" />
@@ -121,12 +125,12 @@ export default async function HomePage() {
           ) : (
             <>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {posts.map((post) => (
+                {latestPosts.map((post) => (
                   <PostCard key={post._id} post={post} />
                 ))}
               </div>
 
-              {posts.length >= 6 && (
+              {allPosts.length > 6 && (
                 <div className="text-center pt-8">
                   <Link href="/posts">
                     <Button size="lg" variant="outline" className="gap-2">

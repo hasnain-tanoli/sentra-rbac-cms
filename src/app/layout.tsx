@@ -13,8 +13,7 @@ const montserrat = Montserrat({
 
 export const metadata: Metadata = {
   title: "Sentra | RBAC CMS",
-  description:
-    "A CMS built with RBAC architecture using Next.js and TypeScript.",
+  description: "CMS with RBAC Architecture",
   icons: {
     icon: "/favicon.png",
   },
