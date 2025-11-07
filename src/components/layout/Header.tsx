@@ -26,8 +26,9 @@ export default function Header() {
   };
 
   return (
-    <header className="w-full border-b bg-background/80 backdrop-blur-md">
+    <header className="w-full border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        {/* Desktop Logo */}
         <Link href="/" className="flex items-center">
           <Image
             src="/Logo-with-Text.svg"
@@ -35,10 +36,11 @@ export default function Header() {
             width={120}
             height={30}
             priority
-            className="h-8"
+            className="h-8 w-auto" // Sizing for the desktop header bar
           />
         </Link>
 
+        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-4">
           {!isLoggedIn ? (
             <>
@@ -69,6 +71,7 @@ export default function Header() {
           )}
         </nav>
 
+        {/* Mobile Hamburger Menu */}
         <div className="md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -78,7 +81,7 @@ export default function Header() {
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="flex flex-col p-6">
+            <SheetContent side="right" className="w-[300px] p-6 sm:w-[350px]">
               <SheetHeader>
                 <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                 <SheetDescription className="sr-only">
@@ -86,7 +89,21 @@ export default function Header() {
                 </SheetDescription>
               </SheetHeader>
 
-              <nav className="flex flex-col gap-3 mt-4">
+              {/* ✅ FIX: Added Logo inside the mobile menu */}
+              <div className="mb-6 flex justify-center border-b pb-6">
+                <Link href="/" onClick={() => setOpen(false)}>
+                  <Image
+                    src="/Logo-with-Text.svg"
+                    alt="Sentra Logo"
+                    width={150}
+                    height={35}
+                    priority
+                    className="h-9 w-auto" // Sizing for inside the menu
+                  />
+                </Link>
+              </div>
+
+              <nav className="flex flex-col gap-3">
                 {!isLoggedIn ? (
                   <>
                     <Link href="/auth/login" onClick={() => setOpen(false)}>
