@@ -48,23 +48,15 @@ export default async function HomePage() {
   let canAccessDashboard = false;
 
   if (isLoggedIn && session.user?.id) {
-    // Use the function directly instead of making an API call
     const permissions = await getUserPermissions(session.user.id);
-
-    console.log("🔍 Debug Info:");
-    console.log("User ID:", session.user.id);
-    console.log("User Roles:", session.user.roles);
-    console.log("User Permissions:", permissions);
 
     hasOnlyPostsRead =
       permissions.length === 1 && permissions[0].key === "posts.read";
 
-    // Check if user is admin (has admin role)
     const isAdmin = session.user.roles?.includes("admin");
 
     console.log("Is Admin:", isAdmin);
 
-    // Check for dashboard access permissions
     const hasDashboardPermission = permissions.some(
       (p) =>
         p.key === "posts.create" ||
@@ -86,7 +78,6 @@ export default async function HomePage() {
 
     console.log("Has Dashboard Permission:", hasDashboardPermission);
 
-    // Admin or users with dashboard permissions can access dashboard
     canAccessDashboard = isAdmin || hasDashboardPermission;
 
     console.log("Can Access Dashboard:", canAccessDashboard);
