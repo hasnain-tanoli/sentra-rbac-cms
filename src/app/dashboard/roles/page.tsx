@@ -5,8 +5,10 @@ import { Role } from "@/types/role";
 import { User } from "@/types/user";
 import { UserRole } from "@/types/userRole";
 import { RolePermission } from "@/types/rolePermission";
+import { Permission } from "@/types/permission";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +38,7 @@ import {
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Pencil,
   Trash2,
@@ -51,6 +54,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function RolesPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [permissions, setPermissions] = useState<Permission[]>([]);
   const [assignments, setAssignments] = useState<UserRole[]>([]);
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,10 +62,14 @@ export default function RolesPage() {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [newRoleTitle, setNewRoleTitle] = useState("");
   const [newRoleDesc, setNewRoleDesc] = useState("");
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editSelectedPermissions, setEditSelectedPermissions] = useState<
+    string[]
+  >([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingRole, setDeletingRole] = useState<Role | null>(null);
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
@@ -70,16 +78,20 @@ export default function RolesPage() {
 
   const { toast } = useToast();
 
+  const formatPermissionName = (perm: Permission): string => {
+    const action = perm.action.charAt(0).toUpperCase() + perm.action.slice(1);
+    const resource =
+      perm.resource.charAt(0).toUpperCase() + perm.resource.slice(1);
+    return `${action} ${resource}`;
+  };
+
   const fetchRoles = useCallback(async () => {
     try {
-      console.log("Fetching roles...");
       const res = await fetch("/api/roles");
       const data = await res.json();
-      console.log("Roles response:", data);
       if (data.success) {
         setRoles(data.data || []);
       } else {
-        console.error("Failed to fetch roles:", data.message);
         toast({
           title: "Error",
           description: data.message || "Failed to fetch roles",
@@ -98,30 +110,34 @@ export default function RolesPage() {
 
   const fetchUsers = useCallback(async () => {
     try {
-      console.log("Fetching users...");
       const res = await fetch("/api/users");
       const data = await res.json();
-      console.log("Users response:", data);
       if (data.success) {
         setUsers(data.data || []);
-      } else {
-        console.error("Failed to fetch users:", data.message);
       }
     } catch (err) {
       console.error("Error fetching users:", err);
     }
   }, []);
 
+  const fetchPermissions = useCallback(async () => {
+    try {
+      const res = await fetch("/api/permissions");
+      const data = await res.json();
+      if (data.success) {
+        setPermissions(data.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching permissions:", err);
+    }
+  }, []);
+
   const fetchAssignments = useCallback(async () => {
     try {
-      console.log("Fetching assignments...");
       const res = await fetch("/api/user-roles");
       const data = await res.json();
-      console.log("Assignments response:", data);
       if (data.success) {
         setAssignments(data.data || []);
-      } else {
-        console.error("Failed to fetch assignments:", data.message);
       }
     } catch (err) {
       console.error("Error fetching assignments:", err);
@@ -130,14 +146,10 @@ export default function RolesPage() {
 
   const fetchRolePermissions = useCallback(async () => {
     try {
-      console.log("Fetching role-permissions...");
       const res = await fetch("/api/role-permissions");
       const data = await res.json();
-      console.log("Role-permissions response:", data);
       if (data.success) {
         setRolePermissions(data.data || []);
-      } else {
-        console.error("Failed to fetch role-permissions:", data.message);
       }
     } catch (err) {
       console.error("Error fetching role-permissions:", err);
@@ -151,6 +163,7 @@ export default function RolesPage() {
         await Promise.all([
           fetchRoles(),
           fetchUsers(),
+          fetchPermissions(),
           fetchAssignments(),
           fetchRolePermissions(),
         ]);
@@ -162,7 +175,13 @@ export default function RolesPage() {
     };
 
     loadData();
-  }, [fetchRoles, fetchUsers, fetchAssignments, fetchRolePermissions]);
+  }, [
+    fetchRoles,
+    fetchUsers,
+    fetchPermissions,
+    fetchAssignments,
+    fetchRolePermissions,
+  ]);
 
   const handleCreateRole = async () => {
     if (!newRoleTitle.trim()) {
@@ -187,14 +206,33 @@ export default function RolesPage() {
       const data = await res.json();
 
       if (data.success) {
+        const newRoleId = data.data._id;
+
+        if (selectedPermissions.length > 0) {
+          await Promise.all(
+            selectedPermissions.map((permissionId) =>
+              fetch("/api/role-permissions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  role_id: newRoleId,
+                  permission_id: permissionId,
+                }),
+              })
+            )
+          );
+        }
+
         toast({
           title: "Success",
-          description: "Role created successfully",
+          description: `Role created with ${selectedPermissions.length} permission(s)`,
         });
-        await fetchRoles();
+
+        await Promise.all([fetchRoles(), fetchRolePermissions()]);
         setCreateDialogOpen(false);
         setNewRoleTitle("");
         setNewRoleDesc("");
+        setSelectedPermissions([]);
       } else {
         toast({
           title: "Error",
@@ -214,7 +252,7 @@ export default function RolesPage() {
     }
   };
 
-  const openEditDialog = (role: Role) => {
+  const openEditDialog = async (role: Role) => {
     if (!role?._id) {
       toast({
         title: "Error",
@@ -224,9 +262,25 @@ export default function RolesPage() {
       return;
     }
 
+    if (role.is_system) {
+      toast({
+        title: "Cannot Edit",
+        description:
+          "System roles cannot be edited as they are required for core functionality.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setEditingRole(role);
     setEditTitle(role.title);
     setEditDescription(role.description || "");
+
+    const currentPermissions = rolePermissions
+      .filter((rp) => rp.role_id && rp.role_id._id === role._id)
+      .map((rp) => rp.permission_id._id);
+
+    setEditSelectedPermissions(currentPermissions);
     setEditDialogOpen(true);
   };
 
@@ -262,15 +316,54 @@ export default function RolesPage() {
       const data = await res.json();
 
       if (data.success) {
+        const currentRolePerms = rolePermissions.filter(
+          (rp) => rp.role_id && rp.role_id._id === editingRole._id
+        );
+
+        const currentPermIds = currentRolePerms.map(
+          (rp) => rp.permission_id._id
+        );
+
+        const toAdd = editSelectedPermissions.filter(
+          (permId) => !currentPermIds.includes(permId)
+        );
+
+        const toRemove = currentRolePerms.filter(
+          (rp) => !editSelectedPermissions.includes(rp.permission_id._id)
+        );
+
+        await Promise.all(
+          toAdd.map((permissionId) =>
+            fetch("/api/role-permissions", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                role_id: editingRole._id,
+                permission_id: permissionId,
+              }),
+            })
+          )
+        );
+
+        await Promise.all(
+          toRemove.map((rp) =>
+            fetch(`/api/role-permissions/${rp._id}`, {
+              method: "DELETE",
+            })
+          )
+        );
+
         toast({
           title: "Success",
           description: "Role updated successfully",
         });
-        await fetchRoles();
+
+        await Promise.all([fetchRoles(), fetchRolePermissions()]);
         setEditDialogOpen(false);
         setEditingRole(null);
         setEditTitle("");
         setEditDescription("");
+        setEditSelectedPermissions([]);
       } else {
         toast({
           title: "Error",
@@ -374,11 +467,6 @@ export default function RolesPage() {
 
     setLoading(true);
     try {
-      console.log("Assigning:", {
-        user_id: selectedUser,
-        role_id: selectedRole,
-      });
-
       const res = await fetch("/api/user-roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -389,7 +477,6 @@ export default function RolesPage() {
       });
 
       const data = await res.json();
-      console.log("Response:", data);
 
       if (data.success) {
         toast({
@@ -416,6 +503,39 @@ export default function RolesPage() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const togglePermission = (permissionId: string, isEdit = false) => {
+    if (isEdit) {
+      setEditSelectedPermissions((prev) =>
+        prev.includes(permissionId)
+          ? prev.filter((id) => id !== permissionId)
+          : [...prev, permissionId]
+      );
+    } else {
+      setSelectedPermissions((prev) =>
+        prev.includes(permissionId)
+          ? prev.filter((id) => id !== permissionId)
+          : [...prev, permissionId]
+      );
+    }
+  };
+
+  const selectAllPermissions = (isEdit = false) => {
+    const allPermIds = permissions.map((p) => p._id);
+    if (isEdit) {
+      setEditSelectedPermissions(allPermIds);
+    } else {
+      setSelectedPermissions(allPermIds);
+    }
+  };
+
+  const deselectAllPermissions = (isEdit = false) => {
+    if (isEdit) {
+      setEditSelectedPermissions([]);
+    } else {
+      setSelectedPermissions([]);
     }
   };
 
@@ -458,6 +578,86 @@ export default function RolesPage() {
     );
   }
 
+  const PermissionSelector = ({
+    selectedPerms,
+    isEdit = false,
+  }: {
+    selectedPerms: string[];
+    isEdit?: boolean;
+  }) => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label className="text-sm font-medium">Permissions</Label>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => selectAllPermissions(isEdit)}
+          >
+            Select All
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => deselectAllPermissions(isEdit)}
+          >
+            Deselect All
+          </Button>
+        </div>
+      </div>
+      <ScrollArea className="h-[400px] rounded-md border p-4">
+        <div className="space-y-3">
+          {permissions.map((perm) => (
+            <div
+              key={perm._id}
+              className="flex items-start space-x-3 p-2 rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                togglePermission(perm._id, isEdit);
+              }}
+            >
+              <Checkbox
+                id={`${isEdit ? "edit-" : ""}perm-${perm._id}`}
+                checked={selectedPerms.includes(perm._id)}
+                onCheckedChange={() => togglePermission(perm._id, isEdit)}
+                className="mt-1 pointer-events-none"
+                onClick={(e) => e.stopPropagation()}
+              />
+              <div className="flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-medium">
+                      {formatPermissionName(perm)}
+                    </span>
+                    {perm.description && (
+                      <span className="text-xs text-muted-foreground">
+                        {perm.description}
+                      </span>
+                    )}
+                    <code className="text-xs bg-muted px-2 py-0.5 rounded w-fit">
+                      {perm.key}
+                    </code>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className="text-xs capitalize whitespace-nowrap"
+                  >
+                    {perm.resource}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </ScrollArea>
+      <p className="text-sm text-muted-foreground">
+        Selected: {selectedPerms.length} of {permissions.length} permissions
+      </p>
+    </div>
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -468,7 +668,7 @@ export default function RolesPage() {
               Roles Management
             </h1>
             <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-              Manage user roles and assign them to users
+              Manage user roles and assign permissions
             </p>
           </div>
         </div>
@@ -481,18 +681,16 @@ export default function RolesPage() {
                 Create Role
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
+            <DialogContent className="max-w-[90vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New Role</DialogTitle>
                 <DialogDescription>
-                  Create a new role with a title and optional description
+                  Create a new role with permissions
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col gap-4 mt-4">
                 <div>
-                  <Label htmlFor="role-title" className="text-sm sm:text-base">
-                    Role Title *
-                  </Label>
+                  <Label htmlFor="role-title">Role Title *</Label>
                   <Input
                     id="role-title"
                     placeholder="e.g., Content Manager"
@@ -501,35 +699,30 @@ export default function RolesPage() {
                   />
                 </div>
                 <div>
-                  <Label
-                    htmlFor="role-description"
-                    className="text-sm sm:text-base"
-                  >
-                    Description
-                  </Label>
+                  <Label htmlFor="role-description">Description</Label>
                   <Input
                     id="role-description"
-                    placeholder="Describe the role's purpose (optional)"
+                    placeholder="Describe the role's purpose"
                     value={newRoleDesc}
                     onChange={(e) => setNewRoleDesc(e.target.value)}
                   />
                 </div>
+                <PermissionSelector selectedPerms={selectedPermissions} />
               </div>
               <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
-                  className="w-full sm:w-auto"
                   onClick={() => {
                     setCreateDialogOpen(false);
                     setNewRoleTitle("");
                     setNewRoleDesc("");
+                    setSelectedPermissions([]);
                   }}
                   disabled={loading}
                 >
                   Cancel
                 </Button>
                 <Button
-                  className="w-full sm:w-auto"
                   onClick={handleCreateRole}
                   disabled={loading || !newRoleTitle.trim()}
                 >
@@ -556,9 +749,7 @@ export default function RolesPage() {
 
               <div className="flex flex-col gap-4 mt-4">
                 <div>
-                  <Label htmlFor="select-user" className="text-sm sm:text-base">
-                    Select User *
-                  </Label>
+                  <Label htmlFor="select-user">Select User *</Label>
                   <Select onValueChange={setSelectedUser} value={selectedUser}>
                     <SelectTrigger id="select-user">
                       <SelectValue placeholder="Select User" />
@@ -582,9 +773,7 @@ export default function RolesPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="select-role" className="text-sm sm:text-base">
-                    Select Role *
-                  </Label>
+                  <Label htmlFor="select-role">Select Role *</Label>
                   <Select onValueChange={setSelectedRole} value={selectedRole}>
                     <SelectTrigger id="select-role">
                       <SelectValue placeholder="Select Role" />
@@ -612,7 +801,6 @@ export default function RolesPage() {
               <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
-                  className="w-full sm:w-auto"
                   onClick={() => {
                     setAssignDialogOpen(false);
                     setSelectedUser("");
@@ -623,7 +811,6 @@ export default function RolesPage() {
                   Cancel
                 </Button>
                 <Button
-                  className="w-full sm:w-auto"
                   onClick={handleAssignRole}
                   disabled={!selectedUser || !selectedRole || loading}
                 >
@@ -635,80 +822,52 @@ export default function RolesPage() {
         </div>
 
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
+          <DialogContent className="max-w-[90vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Edit Role</DialogTitle>
               <DialogDescription>
-                Update the role&apos;s title and description
-                {editingRole?.is_system &&
-                  " (System role - title cannot be changed)"}
+                Update role details and permissions
               </DialogDescription>
             </DialogHeader>
             {editingRole && (
               <div className="flex flex-col gap-4 mt-4">
-                {editingRole.is_system && (
-                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
-                    <Lock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">
-                      This is a system role. Only description can be edited.
-                    </span>
-                  </div>
-                )}
                 <div>
-                  <Label htmlFor="edit-title" className="text-sm sm:text-base">
-                    Role Title *
-                  </Label>
+                  <Label htmlFor="edit-title">Role Title *</Label>
                   <Input
                     id="edit-title"
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    placeholder="Enter role title"
-                    disabled={editingRole.is_system}
-                    className={editingRole.is_system ? "bg-muted" : ""}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="edit-desc" className="text-sm sm:text-base">
-                    Description
-                  </Label>
+                  <Label htmlFor="edit-desc">Description</Label>
                   <Input
                     id="edit-desc"
                     value={editDescription}
                     onChange={(e) => setEditDescription(e.target.value)}
-                    placeholder="Enter description"
                   />
                 </div>
-                <div>
-                  <Label className="text-sm sm:text-base">
-                    Key (Auto-generated)
-                  </Label>
-                  <Input
-                    value={editingRole.key}
-                    disabled
-                    className="bg-muted"
-                  />
-                </div>
+                <PermissionSelector
+                  selectedPerms={editSelectedPermissions}
+                  isEdit={true}
+                />
               </div>
             )}
             <DialogFooter className="flex-col sm:flex-row gap-2">
               <Button
                 variant="outline"
-                className="w-full sm:w-auto"
                 onClick={() => {
                   setEditDialogOpen(false);
                   setEditingRole(null);
                   setEditTitle("");
                   setEditDescription("");
+                  setEditSelectedPermissions([]);
                 }}
                 disabled={loading}
               >
                 Cancel
               </Button>
-              <Button
-                className="w-full sm:w-auto"
-                onClick={handleEditRole}
-                disabled={loading}
-              >
+              <Button onClick={handleEditRole} disabled={loading}>
                 {loading ? "Updating..." : "Update Role"}
               </Button>
             </DialogFooter>
@@ -736,14 +895,9 @@ export default function RolesPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-              <AlertDialogCancel
-                className="w-full sm:w-auto"
-                disabled={loading}
-              >
-                Cancel
-              </AlertDialogCancel>
+              <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
               <AlertDialogAction
-                className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={handleDeleteRole}
                 disabled={loading}
               >
@@ -881,9 +1035,20 @@ export default function RolesPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openEditDialog(role)}
-                                title="Edit role"
+                                disabled={role.is_system}
+                                title={
+                                  role.is_system
+                                    ? "System roles cannot be edited"
+                                    : "Edit role"
+                                }
                               >
-                                <Pencil className="h-4 w-4" />
+                                <Pencil
+                                  className={`h-4 w-4 ${
+                                    role.is_system
+                                      ? "text-muted-foreground"
+                                      : ""
+                                  }`}
+                                />
                               </Button>
                               <Button
                                 variant="ghost"
@@ -1011,9 +1176,10 @@ export default function RolesPage() {
                         size="sm"
                         className="flex-1"
                         onClick={() => openEditDialog(role)}
+                        disabled={role.is_system}
                       >
                         <Pencil className="h-4 w-4 mr-2" />
-                        Edit
+                        {role.is_system ? "Protected" : "Edit"}
                       </Button>
                       <Button
                         variant="outline"

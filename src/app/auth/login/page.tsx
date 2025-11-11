@@ -1,89 +1,149 @@
+// app/auth/login/page.tsx
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
-import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Loader2, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import Image from "next/image";
+import Link from "next/link";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const searchParams = useSearchParams();
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
-  async function handleSubmit(e: React.FormEvent) {
+  // Remove callback URL from URL if present
+  useEffect(() => {
+    const callbackUrl = searchParams.get("callbackUrl");
+    const error = searchParams.get("error");
+
+    if (callbackUrl || error) {
+      // Replace URL without callback parameter
+      window.history.replaceState({}, "", "/auth/login");
+    }
+  }, [searchParams]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+    // Clear error when user starts typing
+    if (error) setError("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
+    setIsLoading(true);
 
-    const res = await signIn("credentials", {
-      redirect: false,
-      email,
-      password,
-    });
+    try {
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false, // Handle redirect manually
+      });
 
-    setLoading(false);
-
-    if (res?.error) {
-      setError("Invalid email or password");
-    } else {
-      router.push("/dashboard");
+      if (result?.error) {
+        setError("Invalid email or password");
+        setIsLoading(false);
+      } else if (result?.ok) {
+        // Use replace to avoid adding to history
+        window.location.replace("/dashboard");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      setError("An unexpected error occurred. Please try again.");
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-gray-50 to-gray-100 px-4">
-      <Card className="w-full max-w-sm shadow-md border rounded-2xl">
-        <CardHeader className="text-center space-y-1">
-          <CardTitle className="text-2xl font-bold text-gray-800">
-            Welcome back
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background to-muted p-4">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader className="space-y-4">
+          <div className="flex justify-center">
+            <Image
+              src="/Logo-with-Text.svg"
+              alt="Sentra Logo"
+              width={150}
+              height={35}
+              priority
+              style={{ height: "auto" }}
+            />
+          </div>
+          <CardTitle className="text-2xl font-bold text-center">
+            Welcome Back
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Sign in to access your dashboard
-          </p>
+          <CardDescription className="text-center">
+            Sign in to your account to continue
+          </CardDescription>
         </CardHeader>
 
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <p className="text-red-500 text-sm text-center bg-red-50 border border-red-200 rounded-md py-2">
-                {error}
-              </p>
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
+                id="email"
+                name="email"
                 type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                value={formData.email}
+                onChange={handleChange}
                 required
+                disabled={isLoading}
+                autoComplete="email"
+                className="w-full"
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
               <Input
+                id="password"
+                name="password"
                 type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                value={formData.password}
+                onChange={handleChange}
                 required
+                disabled={isLoading}
+                autoComplete="current-password"
+                className="w-full"
               />
             </div>
 
-            <Button type="submit" className="w-full mt-2" disabled={loading}>
-              {loading ? (
+            <Button
+              type="submit"
+              className="w-full font-medium"
+              disabled={isLoading}
+            >
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Signing in...
@@ -92,17 +152,16 @@ export default function LoginPage() {
                 "Sign In"
               )}
             </Button>
-          </form>
 
-          <p className="text-center text-sm text-gray-600 mt-4">
-            Don’t have an account?{" "}
-            <Link
-              href="/auth/signup"
-              className="text-primary hover:underline font-medium"
-            >
-              Create one
-            </Link>
-          </p>
+            <div className="text-center text-sm text-muted-foreground">
+              <Link
+                href="/"
+                className="hover:text-primary underline-offset-4 hover:underline"
+              >
+                Back to Home
+              </Link>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>

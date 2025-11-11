@@ -40,6 +40,13 @@ export default function HeaderDashboard() {
   const pathname = usePathname();
   const { permissions, hasPermission, loading } = usePermissions();
 
+  // Clean logout handler - replaces history to prevent back button issues
+  const handleLogout = async () => {
+    setOpen(false);
+    await signOut({ redirect: false });
+    window.location.replace("/auth/login");
+  };
+
   const menuItems: MenuItem[] = useMemo(
     () => [
       {
@@ -148,6 +155,7 @@ export default function HeaderDashboard() {
   return (
     <header className="w-full border-b bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        {/* Mobile Menu */}
         <div className="md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -231,10 +239,7 @@ export default function HeaderDashboard() {
                   </Button>
                 </Link>
                 <Button
-                  onClick={() => {
-                    setOpen(false);
-                    signOut({ callbackUrl: "/auth/login" });
-                  }}
+                  onClick={handleLogout}
                   className="w-full justify-start font-medium"
                   variant="destructive"
                 >
@@ -245,6 +250,7 @@ export default function HeaderDashboard() {
           </Sheet>
         </div>
 
+        {/* Desktop Home Button */}
         <Link href="/" className="hidden md:block">
           <Button variant="outline" className="font-medium">
             <Home className="mr-2 h-4 w-4" />
@@ -252,6 +258,7 @@ export default function HeaderDashboard() {
           </Button>
         </Link>
 
+        {/* Mobile Logo */}
         <div className="md:hidden">
           <Image
             src="/Logo-with-Text.svg"
@@ -263,6 +270,7 @@ export default function HeaderDashboard() {
           />
         </div>
 
+        {/* Desktop Actions */}
         <div className="hidden md:flex items-center gap-3">
           <Link href="/dashboard/profile">
             <Button variant="outline" className="font-medium">
@@ -270,16 +278,14 @@ export default function HeaderDashboard() {
               Profile
             </Button>
           </Link>
-          <Button
-            onClick={() => signOut({ callbackUrl: "/auth/login" })}
-            className="font-medium"
-          >
+          <Button onClick={handleLogout} className="font-medium">
             Log out
           </Button>
         </div>
 
+        {/* Mobile Logout Button */}
         <Button
-          onClick={() => signOut({ callbackUrl: "/auth/login" })}
+          onClick={handleLogout}
           className="md:hidden font-medium"
           size="sm"
         >

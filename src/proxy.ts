@@ -13,8 +13,7 @@ export default withAuth(
         const path = req.nextUrl.pathname;
 
         if (!token?.id) {
-            url.pathname = "/auth/login";
-            return NextResponse.redirect(url);
+            return NextResponse.redirect(new URL("/auth/login", req.url));
         }
 
         const userId = token.id;
@@ -67,7 +66,9 @@ export default withAuth(
                 }
             }
 
-            return NextResponse.next();
+            const response = NextResponse.next();
+            response.headers.set('Cache-Control', 'no-store');
+            return response;
         } catch (error) {
             console.error("Middleware permission check error:", error);
             url.pathname = "/error";
@@ -79,7 +80,9 @@ export default withAuth(
             signIn: "/auth/login",
         },
         callbacks: {
-            authorized: ({ token }) => !!token,
+            authorized: ({ token }) => {
+                return !!token;
+            },
         },
     }
 );

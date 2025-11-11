@@ -1,5 +1,6 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
+import { getUserPermissions } from "@/lib/rbac/getUserPermissions";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { PostCard } from "@/components/posts/PostCard";
@@ -36,26 +37,6 @@ async function getPosts(): Promise<Post[]> {
   }
 }
 
-async function getUserPermissions(email: string): Promise<string[]> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/users?email=${email}`, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) return [];
-
-    const data = await res.json();
-    if (data.success && data.data?.permissions) {
-      return data.data.permissions.map((p: { key: string }) => p.key);
-    }
-    return [];
-  } catch (error) {
-    console.error("Error fetching user permissions:", error);
-    return [];
-  }
-}
-
 export default async function HomePage() {
   const allPosts = await getPosts();
   const latestPosts = allPosts.slice(0, 6);
@@ -66,29 +47,49 @@ export default async function HomePage() {
   let hasOnlyPostsRead = false;
   let canAccessDashboard = false;
 
-  if (isLoggedIn && session.user.email) {
-    const permissions = await getUserPermissions(session.user.email);
-    hasOnlyPostsRead =
-      permissions.length === 1 && permissions[0] === "posts.read";
+  if (isLoggedIn && session.user?.id) {
+    // Use the function directly instead of making an API call
+    const permissions = await getUserPermissions(session.user.id);
 
-    canAccessDashboard = permissions.some(
+    console.log("🔍 Debug Info:");
+    console.log("User ID:", session.user.id);
+    console.log("User Roles:", session.user.roles);
+    console.log("User Permissions:", permissions);
+
+    hasOnlyPostsRead =
+      permissions.length === 1 && permissions[0].key === "posts.read";
+
+    // Check if user is admin (has admin role)
+    const isAdmin = session.user.roles?.includes("admin");
+
+    console.log("Is Admin:", isAdmin);
+
+    // Check for dashboard access permissions
+    const hasDashboardPermission = permissions.some(
       (p) =>
-        p === "posts.create" ||
-        p === "posts.update" ||
-        p === "posts.delete" ||
-        p === "users.read" ||
-        p === "users.create" ||
-        p === "users.update" ||
-        p === "users.delete" ||
-        p === "roles.read" ||
-        p === "roles.create" ||
-        p === "roles.update" ||
-        p === "roles.delete" ||
-        p === "permissions.read" ||
-        p === "permissions.create" ||
-        p === "permissions.update" ||
-        p === "permissions.delete"
+        p.key === "posts.create" ||
+        p.key === "posts.update" ||
+        p.key === "posts.delete" ||
+        p.key === "users.read" ||
+        p.key === "users.create" ||
+        p.key === "users.update" ||
+        p.key === "users.delete" ||
+        p.key === "roles.read" ||
+        p.key === "roles.create" ||
+        p.key === "roles.update" ||
+        p.key === "roles.delete" ||
+        p.key === "permissions.read" ||
+        p.key === "permissions.create" ||
+        p.key === "permissions.update" ||
+        p.key === "permissions.delete"
     );
+
+    console.log("Has Dashboard Permission:", hasDashboardPermission);
+
+    // Admin or users with dashboard permissions can access dashboard
+    canAccessDashboard = isAdmin || hasDashboardPermission;
+
+    console.log("Can Access Dashboard:", canAccessDashboard);
   }
 
   return (
