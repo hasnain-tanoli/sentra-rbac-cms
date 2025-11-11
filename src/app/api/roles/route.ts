@@ -22,6 +22,20 @@ function respond<T>(
   return NextResponse.json(payload, { status });
 }
 
+function generateRoleKey(title: string): string {
+  let key = title.trim().toLowerCase();
+
+  key = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
+  key = key.replace(/[^a-z0-9]+/g, '_');
+
+  key = key.replace(/_+/g, '_');
+
+  key = key.replace(/^_+|_+$/g, '');
+
+  return key;
+}
+
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -44,7 +58,11 @@ export async function POST(req: Request) {
       return respond(false, "A valid role title is required (minimum 2 characters).", 400);
     }
 
-    const key = title.trim().toLowerCase().replace(/\s+/g, '_');
+    const key = generateRoleKey(title);
+
+    if (!key) {
+      return respond(false, "Role title must contain at least one alphanumeric character.", 400);
+    }
 
     const existingRole = await Role.findOne({
       $or: [
@@ -54,7 +72,20 @@ export async function POST(req: Request) {
     });
 
     if (existingRole) {
-      return respond(false, "A role with this title already exists.", 409);
+      const trimmedTitle = title.trim();
+      const titleMatches = existingRole.title.trim() === trimmedTitle;
+      const keyMatches = existingRole.key === key;
+
+      let errorMessage: string;
+      if (titleMatches && keyMatches) {
+        errorMessage = "A role with this title or key already exists.";
+      } else if (titleMatches) {
+        errorMessage = "A role with this title already exists.";
+      } else {
+        errorMessage = "A role with this key already exists.";
+      }
+
+      return respond(false, errorMessage, 409);
     }
 
     const role = await Role.create({

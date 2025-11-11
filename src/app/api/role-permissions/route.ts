@@ -106,14 +106,48 @@ export async function DELETE(req: Request) {
 
     await connectDB();
 
-    const { role_id, permission_id } = await req.json();
+    const body = await req.json();
+    const { role_id, permission_id, permission_ids } = body;
 
-    if (!role_id || !permission_id) {
-      return respond(false, "role_id and permission_id are required.", 400);
+    if (!role_id || typeof role_id !== "string") {
+      return respond(false, "Valid role_id is required.", 400);
     }
 
-    if (!mongoose.Types.ObjectId.isValid(role_id) || !mongoose.Types.ObjectId.isValid(permission_id)) {
-      return respond(false, "Invalid role_id or permission_id", 400);
+    if (!mongoose.Types.ObjectId.isValid(role_id)) {
+      return respond(false, "Invalid role_id", 400);
+    }
+
+    if (permission_ids && Array.isArray(permission_ids)) {
+      if (permission_ids.length === 0) {
+        return respond(false, "At least one permission_id is required.", 400);
+      }
+
+      const invalidIds = permission_ids.filter(
+        (id: string) => !mongoose.Types.ObjectId.isValid(id)
+      );
+      if (invalidIds.length > 0) {
+        return respond(false, "One or more invalid permission_ids", 400);
+      }
+
+      const result = await RolePermission.deleteMany({
+        role_id,
+        permission_id: { $in: permission_ids },
+      });
+
+      return respond(
+        true,
+        `${result.deletedCount} permission(s) removed from role successfully.`,
+        200,
+        { deletedCount: result.deletedCount }
+      );
+    }
+
+    if (!permission_id || typeof permission_id !== "string") {
+      return respond(false, "Valid permission_id or permission_ids array is required.", 400);
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(permission_id)) {
+      return respond(false, "Invalid permission_id", 400);
     }
 
     const result = await RolePermission.findOneAndDelete({ role_id, permission_id });

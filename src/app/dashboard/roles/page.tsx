@@ -359,18 +359,26 @@ export default function RolesPage() {
         }
 
         if (toRemove.length > 0) {
-          await Promise.all(
-            toRemove.map((rp) =>
-              fetch("/api/role-permissions", {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  role_id: editingRole._id,
-                  permission_id: rp.permission_id._id,
-                }),
-              })
-            )
-          );
+          const permissionIds = toRemove.map((rp) => rp.permission_id._id);
+
+          const deleteRes = await fetch("/api/role-permissions", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              role_id: editingRole._id,
+              permission_ids: permissionIds,
+            }),
+          });
+
+          const deleteData = await deleteRes.json();
+
+          if (!deleteData.success) {
+            toast({
+              title: "Warning",
+              description: `Role updated but failed to remove some permissions: ${deleteData.message}`,
+              variant: "destructive",
+            });
+          }
         }
 
         toast({

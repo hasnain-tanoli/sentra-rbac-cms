@@ -282,19 +282,21 @@ export async function POST(req: Request) {
                     console.log(`✅ Assigned ${validRoleIds.length} role(s) to ${newUser.email}`);
                 }
             } else {
-                let defaultRole = await Role.findOne({ key: "user" });
+                const defaultRole = await Role.findOneAndUpdate(
+                    { key: "user" },
+                    {
+                        $setOnInsert: {
+                            title: "User",
+                            key: "user",
+                            description: "Default user role with read-only access to posts",
+                            is_system: false,
+                        }
+                    },
+                    { upsert: true, new: true }
+                );
 
-                if (!defaultRole) {
-                    console.log("⚠️ 'User' role not found. Creating it with 'posts.read' permission...");
-
-                    defaultRole = await Role.create({
-                        title: "User",
-                        key: "user",
-                        description: "Default user role with read-only access to posts",
-                        is_system: false,
-                    });
-
-                    console.log(`✅ Created 'User' role with key: ${defaultRole.key}`);
+                if (defaultRole) {
+                    console.log(`✅ Ensured 'User' role exists with key: ${defaultRole.key}`);
 
                     const postsReadPermission = await Permission.findOne({
                         resource: "posts",
@@ -302,21 +304,30 @@ export async function POST(req: Request) {
                     });
 
                     if (postsReadPermission) {
-                        await RolePermission.create({
-                            role_id: defaultRole._id,
-                            permission_id: postsReadPermission._id,
-                        });
-                        console.log(`✅ Assigned 'posts.read' permission to 'User' role`);
+                        await RolePermission.findOneAndUpdate(
+                            {
+                                role_id: defaultRole._id,
+                                permission_id: postsReadPermission._id,
+                            },
+                            {
+                                $setOnInsert: {
+                                    role_id: defaultRole._id,
+                                    permission_id: postsReadPermission._id,
+                                }
+                            },
+                            { upsert: true }
+                        );
+                        console.log(`✅ Ensured 'posts.read' permission is assigned to 'User' role`);
                     } else {
-                        console.warn("⚠️ 'posts.read' permission not found. Creating User role without permissions.");
+                        console.warn("⚠️ 'posts.read' permission not found. User role exists without this permission.");
                     }
-                }
 
-                await UserRole.create({
-                    user_id: newUser._id,
-                    role_id: defaultRole._id,
-                });
-                console.log(`✅ Assigned default role "${defaultRole.title}" to ${newUser.email}`);
+                    await UserRole.create({
+                        user_id: newUser._id,
+                        role_id: defaultRole._id,
+                    });
+                    console.log(`✅ Assigned default role "${defaultRole.title}" to ${newUser.email}`);
+                }
             }
         }
 
