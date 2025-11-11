@@ -21,11 +21,13 @@ export interface UserWithRelations {
     email: string;
     avatar?: string;
     is_active: boolean;
+    is_system?: boolean;
     roles: {
         _id: string;
         title: string;
         key: string;
         description?: string;
+        is_system?: boolean;
     }[];
     permissions: {
         _id: string;
@@ -65,8 +67,8 @@ export async function GET(req: Request) {
 
         const requestedEmail = email?.toLowerCase();
         const requestedId = id;
-        const isOwnProfile = 
-            (requestedId && session.user.id === requestedId) || 
+        const isOwnProfile =
+            (requestedId && session.user.id === requestedId) ||
             (requestedEmail && session.user.email?.toLowerCase() === requestedEmail);
 
         if ((id || email) && !isOwnProfile) {
@@ -222,7 +224,7 @@ export async function POST(req: Request) {
     try {
         await connectDB();
 
-        const { name, email, password } = await req.json();
+        const { name, email, password, role_ids } = await req.json();
 
         if (!name?.trim() || !email?.trim() || !password?.trim()) {
             return respond(false, "Name, email, and password are required.", 400);
@@ -235,6 +237,9 @@ export async function POST(req: Request) {
 
         const normalizedEmail = email.trim().toLowerCase();
 
+        const SUPER_ADMIN_EMAIL = "superadmin@sentra.com";
+        const isSuperAdminCreation = normalizedEmail === SUPER_ADMIN_EMAIL;
+
         const existingUser = await User.findOne({ email: normalizedEmail });
         if (existingUser) {
             return respond(false, "User with this email already exists.", 409);
@@ -246,20 +251,46 @@ export async function POST(req: Request) {
             name: name.trim(),
             email: normalizedEmail,
             password: hashedPassword,
+            is_system: isSuperAdminCreation,
         });
 
         console.log(`✅ User created: ${newUser.email}`);
 
-        const defaultRole = await Role.findOne({ key: "author" });
-
-        if (defaultRole) {
-            await UserRole.create({
-                user_id: newUser._id,
-                role_id: defaultRole._id,
-            });
-            console.log(`✅ Assigned role "${defaultRole.title}" to ${newUser.email}`);
+        if (isSuperAdminCreation) {
+            const superAdminRole = await Role.findOne({ key: "super_admin" });
+            if (superAdminRole) {
+                await UserRole.create({
+                    user_id: newUser._id,
+                    role_id: superAdminRole._id,
+                });
+                console.log(`✅ Assigned 'super-admin' role to system user ${newUser.email}`);
+            } else {
+                console.warn(`⚠️ CRITICAL: 'super-admin' role not found. System user ${newUser.email} created without essential permissions.`);
+            }
         } else {
-            console.warn("⚠️ No default 'author' role found. Please create it in /dashboard/roles");
+            if (Array.isArray(role_ids) && role_ids.length > 0) {
+                const validRoleIds = role_ids.filter(id => mongoose.Types.ObjectId.isValid(id));
+
+                if (validRoleIds.length > 0) {
+                    const roleAssignments = validRoleIds.map(roleId => ({
+                        user_id: newUser._id,
+                        role_id: roleId
+                    }));
+                    await UserRole.insertMany(roleAssignments);
+                    console.log(`✅ Assigned ${validRoleIds.length} role(s) to ${newUser.email}`);
+                }
+            } else {
+                const defaultRole = await Role.findOne({ key: "author" });
+                if (defaultRole) {
+                    await UserRole.create({
+                        user_id: newUser._id,
+                        role_id: defaultRole._id,
+                    });
+                    console.log(`✅ Assigned default role "${defaultRole.title}" to ${newUser.email}`);
+                } else {
+                    console.warn("⚠️ No default 'author' role found. User created without roles.");
+                }
+            }
         }
 
         const pipeline: mongoose.PipelineStage[] = [
@@ -382,21 +413,7 @@ export async function POST(req: Request) {
             true,
             "User created successfully.",
             201,
-            userWithRelations || {
-                _id: newUser._id.toString(),
-                name: newUser.name,
-                email: newUser.email,
-                roles: defaultRole ? [{
-                    _id: defaultRole._id.toString(),
-                    title: defaultRole.title,
-                    key: defaultRole.key,
-                    description: defaultRole.description
-                }] : [],
-                permissions: [],
-                is_active: true,
-                created_at: new Date(),
-                updated_at: new Date(),
-            }
+            userWithRelations
         );
     } catch (error) {
         console.error("POST /api/users error:", error);
@@ -427,6 +444,26 @@ export async function PUT(req: Request) {
             return respond(false, "Forbidden.", 403);
         }
 
+        const targetUser = await User.findById(id);
+        if (!targetUser) {
+            return respond(false, "User not found.", 404);
+        }
+
+        const SUPER_ADMIN_EMAIL = "superadmin@sentra.com";
+        const newEmail = email?.trim().toLowerCase();
+
+        if (newEmail === SUPER_ADMIN_EMAIL && targetUser.email !== SUPER_ADMIN_EMAIL) {
+            return respond(false, "This email address is reserved for the system admin account.", 403);
+        }
+
+        if (targetUser.email === SUPER_ADMIN_EMAIL && newEmail && newEmail !== SUPER_ADMIN_EMAIL) {
+            return respond(false, "The email of the primary super admin account cannot be changed.", 403);
+        }
+
+        if (targetUser.is_system && !isSelf) {
+            console.warn(`⚠️ Updating system user: ${targetUser.email} by ${session.user.email}`);
+        }
+
         const updateData: Record<string, string> = {};
         if (name) updateData.name = name.trim();
         if (email) updateData.email = email.trim().toLowerCase();
@@ -436,6 +473,10 @@ export async function PUT(req: Request) {
         if (!updatedUser) return respond(false, "User not found.", 404);
 
         if (Array.isArray(role_keys) && canUpdate) {
+            if (updatedUser.email === SUPER_ADMIN_EMAIL && !role_keys.includes('super_admin')) {
+                return respond(false, "The 'super-admin' role cannot be removed", 403);
+            }
+
             const { assignRolesToUser } = await import("@/lib/rbac/assignRoles");
             await UserRole.deleteMany({ user_id: id });
             if (role_keys.length > 0) {
@@ -594,6 +635,14 @@ export async function DELETE(req: Request) {
 
         const user = await User.findById(id);
         if (!user) return respond(false, "User not found.", 404);
+
+        if (user.is_system) {
+            return respond(
+                false,
+                "System users cannot be deleted. This user is required for core functionality.",
+                403
+            );
+        }
 
         await UserRole.deleteMany({ user_id: id });
         await User.findByIdAndDelete(id);

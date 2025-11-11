@@ -59,6 +59,7 @@ export async function POST(req: Request) {
       title: title.trim(),
       key: key?.trim().toLowerCase(),
       description,
+      is_system: false,
     });
 
     return respond(true, "Role created successfully.", 201, role);

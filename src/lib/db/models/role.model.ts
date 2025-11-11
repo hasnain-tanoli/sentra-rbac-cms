@@ -4,6 +4,7 @@ export interface IRole extends Document {
   title: string;
   key: string;
   description?: string;
+  is_system: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -22,7 +23,12 @@ const RoleSchema = new Schema<IRole>({
     index: true,
     match: /^[a-z_]+$/
   },
-  description: String
+  description: String,
+  is_system: {
+    type: Boolean,
+    default: false,
+    index: true
+  }
 }, {
   timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });

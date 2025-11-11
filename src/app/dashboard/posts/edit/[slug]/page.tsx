@@ -61,7 +61,6 @@ export default function EditPostPage() {
     return (
       <DashboardLayout>
         <div className="space-y-6">
-          {/* Header - Responsive */}
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex-1">
               <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
@@ -80,7 +79,6 @@ export default function EditPostPage() {
             </Link>
           </div>
 
-          {/* Error State - Responsive */}
           <div className="rounded-md border">
             <div className="px-4 py-12 text-center">
               <FileText className="h-12 w-12 mx-auto mb-4 opacity-20 text-destructive" />
@@ -107,7 +105,6 @@ export default function EditPostPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header - Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
@@ -126,7 +123,6 @@ export default function EditPostPage() {
           </Link>
         </div>
 
-        {/* Post Form */}
         <PostForm mode="edit" initialData={post} />
       </div>
     </DashboardLayout>

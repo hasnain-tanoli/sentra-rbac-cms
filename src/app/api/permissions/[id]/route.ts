@@ -98,6 +98,14 @@ export async function DELETE(
             return respond(false, "Permission not found", 404);
         }
 
+        if (permission.is_system) {
+            return respond(
+                false,
+                "System permissions cannot be deleted. This permission is required for core functionality.",
+                403
+            );
+        }
+
         const deletedAssignments = await RolePermission.deleteMany({
             permission_id: id
         });

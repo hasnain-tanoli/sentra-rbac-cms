@@ -33,8 +33,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Pencil, Trash2, Plus, Shield, ShieldCheck } from "lucide-react";
+import { Pencil, Trash2, Plus, Shield, ShieldCheck, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PermissionsPage() {
@@ -133,7 +134,6 @@ export default function PermissionsPage() {
     loadData();
   }, [fetchPermissionSchema, fetchPermissions, fetchRoles, fetchAssignments]);
 
-  // Create Permission
   const handleCreatePermission = async () => {
     if (!newPermission.resource || !newPermission.action) {
       toast({
@@ -250,6 +250,17 @@ export default function PermissionsPage() {
       });
       return;
     }
+
+    if (permission.is_system) {
+      toast({
+        title: "Cannot Delete",
+        description:
+          "System permissions cannot be deleted as they are required for core functionality.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setDeletingPermission(permission);
     setDeleteDialogOpen(true);
   };
@@ -373,7 +384,6 @@ export default function PermissionsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header - Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
@@ -386,7 +396,6 @@ export default function PermissionsPage() {
           </div>
         </div>
 
-        {/* Action Buttons - Responsive */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
@@ -563,6 +572,12 @@ export default function PermissionsPage() {
                                 {perm.action}
                               </span>
                             </span>
+                            {perm.is_system && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Lock className="h-3 w-3 mr-1" />
+                                System
+                              </Badge>
+                            )}
                             {perm.description && (
                               <span className="text-xs text-muted-foreground hidden sm:inline">
                                 {perm.description}
@@ -604,7 +619,6 @@ export default function PermissionsPage() {
           </Dialog>
         </div>
 
-        {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
             <DialogHeader>
@@ -618,11 +632,22 @@ export default function PermissionsPage() {
               <div className="flex flex-col gap-4 mt-4">
                 <div>
                   <Label className="text-sm sm:text-base">Resource</Label>
-                  <Input
-                    value={editingPermission.resource}
-                    disabled
-                    className="capitalize bg-muted"
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editingPermission.resource}
+                      disabled
+                      className="capitalize bg-muted"
+                    />
+                    {editingPermission.is_system && (
+                      <Badge
+                        variant="secondary"
+                        className="text-xs whitespace-nowrap"
+                      >
+                        <Lock className="h-3 w-3 mr-1" />
+                        System
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-sm sm:text-base">Action</Label>
@@ -672,7 +697,6 @@ export default function PermissionsPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
             <AlertDialogHeader>
@@ -708,7 +732,6 @@ export default function PermissionsPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Desktop Table View */}
         <div className="hidden md:block rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
@@ -760,8 +783,18 @@ export default function PermissionsPage() {
                           key={perm._id}
                           className="hover:bg-muted/30 transition-colors"
                         >
-                          <td className="border-b px-4 py-3 capitalize font-medium">
-                            {perm.resource}
+                          <td className="border-b px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="capitalize font-medium">
+                                {perm.resource}
+                              </span>
+                              {perm.is_system && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Lock className="h-3 w-3 mr-1" />
+                                  System
+                                </Badge>
+                              )}
+                            </div>
                           </td>
                           <td className="border-b px-4 py-3 capitalize">
                             {perm.action}
@@ -806,9 +839,20 @@ export default function PermissionsPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openDeleteDialog(perm)}
-                                title="Delete permission"
+                                disabled={perm.is_system}
+                                title={
+                                  perm.is_system
+                                    ? "System permissions cannot be deleted"
+                                    : "Delete permission"
+                                }
                               >
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <Trash2
+                                  className={`h-4 w-4 ${
+                                    perm.is_system
+                                      ? "text-muted-foreground"
+                                      : "text-destructive"
+                                  }`}
+                                />
                               </Button>
                             </div>
                           </td>
@@ -821,7 +865,6 @@ export default function PermissionsPage() {
           </div>
         </div>
 
-        {/* Mobile Card View */}
         <div className="md:hidden space-y-4">
           {permissions.length === 0 ? (
             <div className="rounded-md border">
@@ -843,9 +886,8 @@ export default function PermissionsPage() {
                     key={perm._id}
                     className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
                   >
-                    {/* Resource & Action */}
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="font-semibold text-base capitalize">
                           {perm.resource}
                         </span>
@@ -853,20 +895,24 @@ export default function PermissionsPage() {
                         <span className="font-medium text-primary capitalize">
                           {perm.action}
                         </span>
+                        {perm.is_system && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Lock className="h-3 w-3 mr-1" />
+                            System
+                          </Badge>
+                        )}
                       </div>
                       <code className="text-xs bg-muted px-2 py-1 rounded font-mono text-muted-foreground">
                         {perm.key}
                       </code>
                     </div>
 
-                    {/* Description */}
                     {perm.description && (
                       <p className="text-sm text-muted-foreground">
                         {perm.description}
                       </p>
                     )}
 
-                    {/* Assigned Roles */}
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
                         <ShieldCheck className="h-3.5 w-3.5" />
@@ -890,7 +936,6 @@ export default function PermissionsPage() {
                       )}
                     </div>
 
-                    {/* Actions */}
                     <div className="flex gap-2 pt-2">
                       <Button
                         variant="outline"
@@ -906,9 +951,16 @@ export default function PermissionsPage() {
                         size="sm"
                         className="flex-1"
                         onClick={() => openDeleteDialog(perm)}
+                        disabled={perm.is_system}
                       >
-                        <Trash2 className="h-4 w-4 mr-2 text-destructive" />
-                        Delete
+                        <Trash2
+                          className={`h-4 w-4 mr-2 ${
+                            perm.is_system
+                              ? "text-muted-foreground"
+                              : "text-destructive"
+                          }`}
+                        />
+                        {perm.is_system ? "Protected" : "Delete"}
                       </Button>
                     </div>
                   </div>
@@ -917,7 +969,6 @@ export default function PermissionsPage() {
           )}
         </div>
 
-        {/* Footer Statistics - Responsive */}
         {permissions.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
             <div className="text-center">

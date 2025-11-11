@@ -47,7 +47,6 @@ export default async function AllPostsPage() {
 
       <main className="mx-auto max-w-6xl px-6 md:px-8 py-16">
         <section className="w-full space-y-8">
-          {/* Page Header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-4xl font-bold flex items-center gap-3">
@@ -69,9 +68,7 @@ export default async function AllPostsPage() {
             </Link>
           </div>
 
-          {/* Posts Content */}
           {posts.length === 0 ? (
-            // Empty state, consistent with the homepage
             <div className="rounded-md border mt-8">
               <div className="px-4 py-24 text-center">
                 <FileText className="h-16 w-16 mx-auto mb-6 opacity-20" />
@@ -83,7 +80,6 @@ export default async function AllPostsPage() {
               </div>
             </div>
           ) : (
-            // Grid of posts, consistent with the homepage
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pt-4">
               {posts.map((post) => (
                 <PostCard key={post._id} post={post} />

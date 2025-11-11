@@ -28,14 +28,12 @@ export default function Header() {
 
   const isLoggedIn = !!session?.user;
 
-  // Check if user only has posts.read permission
   const hasOnlyPostsRead = useMemo(() => {
     return (
       permissions.length === 1 && permissions[0] === PERMISSION_KEYS.POSTS_READ
     );
   }, [permissions]);
 
-  // Check if user has any dashboard management permissions
   const hasDashboardAccess = useMemo(() => {
     const canManagePosts =
       hasPermission(PERMISSION_KEYS.POSTS_CREATE) ||
@@ -72,7 +70,6 @@ export default function Header() {
   return (
     <header className="w-full border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        {/* Desktop Logo */}
         <Link href="/" className="flex items-center">
           <Image
             src="/Logo-with-Text.svg"
@@ -84,7 +81,6 @@ export default function Header() {
           />
         </Link>
 
-        {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-4">
           {!isLoggedIn ? (
             <>
@@ -144,7 +140,6 @@ export default function Header() {
           )}
         </nav>
 
-        {/* Mobile Hamburger Menu */}
         <div className="md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -162,7 +157,6 @@ export default function Header() {
                 </SheetDescription>
               </SheetHeader>
 
-              {/* Logo inside the mobile menu */}
               <div className="mb-6 flex justify-center border-b pb-6">
                 <Link href="/" onClick={() => setOpen(false)}>
                   <Image

@@ -93,7 +93,11 @@ export async function PUT(
       return respond(false, "Role not found", 404);
     }
 
-    if (title) role.title = title.trim();
+    if (role.is_system && title && title.trim() !== role.title) {
+      return respond(false, "Cannot change the title of a system role.", 403);
+    }
+
+    if (title && !role.is_system) role.title = title.trim();
     if (description !== undefined) role.description = description;
 
     await role.save();
@@ -134,7 +138,14 @@ export async function DELETE(
       return respond(false, "Role not found", 404);
     }
 
-    // Delete related records
+    if (role.is_system) {
+      return respond(
+        false,
+        "System roles cannot be deleted. This role is required for core functionality.",
+        403
+      );
+    }
+
     const deletedPermissions = await RolePermission.deleteMany({ role_id: id });
     const deletedUserRoles = await UserRole.deleteMany({ role_id: id });
     await Role.findByIdAndDelete(id);

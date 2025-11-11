@@ -6,6 +6,7 @@ import { User } from "@/types/user";
 import { UserRole } from "@/types/userRole";
 import { RolePermission } from "@/types/rolePermission";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ import {
   ShieldCheck,
   Loader2,
   Key,
+  Lock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -298,6 +300,16 @@ export default function RolesPage() {
       return;
     }
 
+    if (role.is_system) {
+      toast({
+        title: "Cannot Delete",
+        description:
+          "System roles cannot be deleted as they are required for core functionality.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setDeletingRole(role);
     setDeleteDialogOpen(true);
   };
@@ -449,7 +461,6 @@ export default function RolesPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header - Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
@@ -462,7 +473,6 @@ export default function RolesPage() {
           </div>
         </div>
 
-        {/* Action Buttons - Responsive */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
@@ -590,6 +600,7 @@ export default function RolesPage() {
                           .map((role) => (
                             <SelectItem key={role._id} value={role._id}>
                               {role.title}
+                              {role.is_system && " (System)"}
                             </SelectItem>
                           ))
                       )}
@@ -623,17 +634,26 @@ export default function RolesPage() {
           </Dialog>
         </div>
 
-        {/* Edit Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
           <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
             <DialogHeader>
               <DialogTitle>Edit Role</DialogTitle>
               <DialogDescription>
                 Update the role&apos;s title and description
+                {editingRole?.is_system &&
+                  " (System role - title cannot be changed)"}
               </DialogDescription>
             </DialogHeader>
             {editingRole && (
               <div className="flex flex-col gap-4 mt-4">
+                {editingRole.is_system && (
+                  <div className="flex items-center gap-2 p-3 bg-muted rounded-md">
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      This is a system role. Only description can be edited.
+                    </span>
+                  </div>
+                )}
                 <div>
                   <Label htmlFor="edit-title" className="text-sm sm:text-base">
                     Role Title *
@@ -643,6 +663,8 @@ export default function RolesPage() {
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     placeholder="Enter role title"
+                    disabled={editingRole.is_system}
+                    className={editingRole.is_system ? "bg-muted" : ""}
                   />
                 </div>
                 <div>
@@ -685,7 +707,7 @@ export default function RolesPage() {
               <Button
                 className="w-full sm:w-auto"
                 onClick={handleEditRole}
-                disabled={loading || !editTitle.trim()}
+                disabled={loading}
               >
                 {loading ? "Updating..." : "Update Role"}
               </Button>
@@ -693,7 +715,6 @@ export default function RolesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Dialog */}
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
             <AlertDialogHeader>
@@ -732,7 +753,6 @@ export default function RolesPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Desktop Table View */}
         <div className="hidden md:block rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
@@ -786,8 +806,16 @@ export default function RolesPage() {
                           key={role._id}
                           className="hover:bg-muted/30 transition-colors"
                         >
-                          <td className="border-b px-4 py-3 font-medium">
-                            {role.title}
+                          <td className="border-b px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{role.title}</span>
+                              {role.is_system && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Lock className="h-3 w-3 mr-1" />
+                                  System
+                                </Badge>
+                              )}
+                            </div>
                           </td>
                           <td className="border-b px-4 py-3">
                             <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
@@ -861,9 +889,20 @@ export default function RolesPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openDeleteDialog(role)}
-                                title="Delete role"
+                                disabled={role.is_system}
+                                title={
+                                  role.is_system
+                                    ? "System roles cannot be deleted"
+                                    : "Delete role"
+                                }
                               >
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <Trash2
+                                  className={`h-4 w-4 ${
+                                    role.is_system
+                                      ? "text-muted-foreground"
+                                      : "text-destructive"
+                                  }`}
+                                />
                               </Button>
                             </div>
                           </td>
@@ -876,7 +915,6 @@ export default function RolesPage() {
           </div>
         </div>
 
-        {/* Mobile Card View */}
         <div className="md:hidden space-y-4">
           {roles.length === 0 ? (
             <div className="rounded-md border">
@@ -898,24 +936,29 @@ export default function RolesPage() {
                     key={role._id}
                     className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
                   >
-                    {/* Role Title & Key */}
                     <div>
-                      <h3 className="font-semibold text-base mb-1">
-                        {role.title}
-                      </h3>
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-base">
+                          {role.title}
+                        </h3>
+                        {role.is_system && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Lock className="h-3 w-3 mr-1" />
+                            System
+                          </Badge>
+                        )}
+                      </div>
                       <code className="text-xs bg-muted px-2 py-1 rounded font-mono text-muted-foreground">
                         {role.key}
                       </code>
                     </div>
 
-                    {/* Description */}
                     {role.description && (
                       <p className="text-sm text-muted-foreground">
                         {role.description}
                       </p>
                     )}
 
-                    {/* Users */}
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
                         <UsersIcon className="h-3.5 w-3.5" />
@@ -939,7 +982,6 @@ export default function RolesPage() {
                       )}
                     </div>
 
-                    {/* Permissions */}
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
                         <Key className="h-3.5 w-3.5" />
@@ -963,7 +1005,6 @@ export default function RolesPage() {
                       )}
                     </div>
 
-                    {/* Actions */}
                     <div className="flex gap-2 pt-2">
                       <Button
                         variant="outline"
@@ -979,9 +1020,16 @@ export default function RolesPage() {
                         size="sm"
                         className="flex-1"
                         onClick={() => openDeleteDialog(role)}
+                        disabled={role.is_system}
                       >
-                        <Trash2 className="h-4 w-4 mr-2 text-destructive" />
-                        Delete
+                        <Trash2
+                          className={`h-4 w-4 mr-2 ${
+                            role.is_system
+                              ? "text-muted-foreground"
+                              : "text-destructive"
+                          }`}
+                        />
+                        {role.is_system ? "Protected" : "Delete"}
                       </Button>
                     </div>
                   </div>
@@ -990,7 +1038,6 @@ export default function RolesPage() {
           )}
         </div>
 
-        {/* Footer Statistics - Responsive */}
         {roles.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
             <div className="text-center">

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/db/connection";
-import { Permission, ACTIONS, RESOURCES, Action, Resource } from "@/lib/db/models/permission.model";
+import { Permission, ACTIONS, RESOURCES, Action, Resource, SYSTEM_RESOURCES } from "@/lib/db/models/permission.model";
+import { Role } from "@/lib/db/models/role.model";
+import { RolePermission } from "@/lib/db/models/rolePermission.model";
 
 interface ApiResponse<T = unknown> {
     success: boolean;
@@ -55,12 +57,31 @@ export async function POST(req: Request) {
             return respond(false, "Permission with this resource and action already exists", 409);
         }
 
+        const isSystem = SYSTEM_RESOURCES.includes(resourceNormalized);
+
         const permission = await Permission.create({
             resource: resourceNormalized,
             action: actionNormalized,
             key,
             description: description || `${actionNormalized.toUpperCase()} ${resourceNormalized}`,
+            is_system: isSystem,
         });
+
+        const superAdminRole = await Role.findOne({ key: 'super_admin' });
+        if (superAdminRole) {
+            const existingAssignment = await RolePermission.findOne({
+                role_id: superAdminRole._id,
+                permission_id: permission._id
+            });
+
+            if (!existingAssignment) {
+                await RolePermission.create({
+                    role_id: superAdminRole._id,
+                    permission_id: permission._id
+                });
+                console.log(`✅ Auto-assigned permission ${key} to super_admin role`);
+            }
+        }
 
         return respond(true, "Permission created successfully", 201, permission);
     } catch (error) {

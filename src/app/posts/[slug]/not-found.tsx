@@ -13,14 +13,12 @@ export default function NotFound() {
         <div className="max-w-2xl w-full">
           <div className="rounded-lg border bg-card text-card-foreground shadow-xl">
             <div className="py-16 px-8 text-center space-y-6">
-              {/* Icon */}
               <div className="flex justify-center">
                 <div className="rounded-full bg-destructive/10 p-6">
                   <FileQuestion className="h-20 w-20 text-destructive" />
                 </div>
               </div>
 
-              {/* Text Content */}
               <div className="space-y-3">
                 <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
                   Post Not Found
@@ -31,7 +29,6 @@ export default function NotFound() {
                 </p>
               </div>
 
-              {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
                 <Link href="/">
                   <Button size="lg" className="gap-2 w-full sm:w-auto">

@@ -90,7 +90,6 @@ export function usePermissions(): UserPermissions {
     };
 }
 
-// Individual hooks for convenience
 export function useHasPermission(permissionKey: string): boolean {
     const { hasPermission } = usePermissions();
     return hasPermission(permissionKey);

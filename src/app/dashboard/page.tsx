@@ -88,7 +88,6 @@ export default function DashboardPage() {
   const [recentPosts, setRecentPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Check permissions
   const canReadUsers = hasPermission(PERMISSION_KEYS.USERS_READ);
   const canReadPosts = hasPermission(PERMISSION_KEYS.POSTS_READ);
   const canReadRoles = hasPermission(PERMISSION_KEYS.ROLES_READ);
@@ -129,14 +128,12 @@ export default function DashboardPage() {
     [hasPermission]
   );
 
-  // Check if user only has posts.read permission
   const hasOnlyPostsRead = useMemo(() => {
     return (
       permissions.length === 1 && permissions[0] === PERMISSION_KEYS.POSTS_READ
     );
   }, [permissions]);
 
-  // Check if user has any dashboard access
   const hasDashboardAccess = useMemo(() => {
     return (
       canManageUsers || canManageRoles || canManagePermissions || canManagePosts
@@ -148,7 +145,6 @@ export default function DashboardPage() {
     [permsLoading, permissions.length]
   );
 
-  // Redirect users with only posts.read or no dashboard access to home page
   useEffect(() => {
     if (!permsLoading && (hasOnlyPostsRead || !hasDashboardAccess)) {
       router.replace("/");
@@ -270,7 +266,6 @@ export default function DashboardPage() {
 
   const uiLoading = loading || permsLoading;
 
-  // Show loading while checking permissions or redirecting
   if (permsLoading || hasOnlyPostsRead || !hasDashboardAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -310,7 +305,6 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <>
-            {/* Stats Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               {canReadUsers && (
                 <Card>
@@ -383,7 +377,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Charts */}
             <div className="grid gap-6 md:grid-cols-2">
               {(canReadUsers ||
                 canReadPosts ||
@@ -446,7 +439,6 @@ export default function DashboardPage() {
               )}
             </div>
 
-            {/* Recent Posts */}
             {canReadPosts && recentPosts.length > 0 && (
               <Card>
                 <CardHeader>
@@ -487,7 +479,6 @@ export default function DashboardPage() {
               </Card>
             )}
 
-            {/* Quick Access */}
             <div>
               <h2 className="text-xl font-semibold mb-4">Quick Access</h2>
               <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">

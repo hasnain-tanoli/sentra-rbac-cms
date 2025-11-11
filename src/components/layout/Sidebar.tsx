@@ -97,12 +97,10 @@ export default function Sidebar() {
   const visibleMenu = useMemo(
     () =>
       menu.filter((item) => {
-        // Hide all items for users with only posts.read
         if (hasOnlyPostsRead) {
           return false;
         }
 
-        // For items requiring manage permissions
         if (item.requireManagePermissions) {
           if (item.name === "Posts") {
             return canManagePosts;
@@ -112,7 +110,6 @@ export default function Sidebar() {
           }
         }
 
-        // For items with specific permission requirements
         if (item.permission) {
           return hasPermission(item.permission);
         }

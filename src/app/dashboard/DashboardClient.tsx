@@ -57,7 +57,6 @@ export function DashboardClient() {
 
   const { hasPermission, loading: permsLoading } = usePermissions();
 
-  // Check individual permissions
   const canReadPosts = hasPermission(PERMISSION_KEYS.POSTS_READ);
   const canReadUsers = hasPermission(PERMISSION_KEYS.USERS_READ);
   const canReadRoles = hasPermission(PERMISSION_KEYS.ROLES_READ);
@@ -99,7 +98,6 @@ export function DashboardClient() {
           permissions: false,
         };
 
-        // Only fetch data for resources user can read
         if (canReadPosts) {
           promises.push(fetch("/api/posts"));
           fetchFlags.posts = true;
@@ -160,7 +158,6 @@ export function DashboardClient() {
     canReadPermissions,
   ]);
 
-  // Filter stats based on permissions
   const stats = [
     canReadPosts && {
       title: "Posts",
@@ -220,7 +217,6 @@ export function DashboardClient() {
   return (
     <DashboardLayout>
       <div className="space-y-6 sm:space-y-8">
-        {/* Header - Responsive */}
         <div>
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">
             Admin Dashboard
@@ -247,7 +243,6 @@ export function DashboardClient() {
           </Card>
         ) : (
           <>
-            {/* Stats Cards - Responsive */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
               {stats.map((stat) => (
                 <Card
@@ -272,7 +267,6 @@ export function DashboardClient() {
               ))}
             </div>
 
-            {/* Chart Card - Responsive */}
             {chartData.length > 0 && (
               <Card>
                 <CardHeader>
@@ -313,7 +307,6 @@ export function DashboardClient() {
               </Card>
             )}
 
-            {/* Quick Actions - Responsive */}
             {stats.filter((stat) => stat.canManage).length > 0 && (
               <div>
                 <h2 className="text-lg sm:text-xl font-semibold mb-4">

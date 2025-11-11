@@ -149,7 +149,6 @@ export default function ProfilePage() {
           </Card>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Personal Information Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -186,7 +185,6 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Access Control Card */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -229,7 +227,6 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-                {/* Permissions */}
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <Key className="h-4 w-4 text-muted-foreground" />

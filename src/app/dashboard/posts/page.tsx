@@ -211,7 +211,6 @@ export default function PostsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header - Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
@@ -224,7 +223,6 @@ export default function PostsPage() {
           </div>
         </div>
 
-        {/* Action Buttons - Responsive */}
         <div className="flex flex-col sm:flex-row gap-3">
           <Link href="/dashboard/posts/new" className="w-full sm:w-auto">
             <Button
@@ -238,7 +236,6 @@ export default function PostsPage() {
           </Link>
         </div>
 
-        {/* Delete Confirmation Dialog */}
         <AlertDialog
           open={!!deleteSlug}
           onOpenChange={(open) => {
@@ -287,7 +284,6 @@ export default function PostsPage() {
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Posts - Desktop Table View */}
         <div className="hidden md:block rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
@@ -416,7 +412,6 @@ export default function PostsPage() {
           </div>
         </div>
 
-        {/* Posts - Mobile Card View */}
         <div className="md:hidden space-y-4">
           {posts.length === 0 ? (
             <div className="rounded-md border">
@@ -457,7 +452,6 @@ export default function PostsPage() {
                   key={post._id}
                   className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
                 >
-                  {/* Title & Status */}
                   <div className="flex items-start justify-between gap-3">
                     <h3 className="font-semibold text-base line-clamp-2 flex-1">
                       {post.title}
@@ -473,7 +467,6 @@ export default function PostsPage() {
                     </span>
                   </div>
 
-                  {/* Author & Date */}
                   <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-muted-foreground">
                     <div className="flex items-center gap-1.5">
                       <User className="h-3.5 w-3.5" />
@@ -486,7 +479,6 @@ export default function PostsPage() {
                     </div>
                   </div>
 
-                  {/* Actions */}
                   <div className="flex gap-2 pt-2">
                     <Link
                       href={`/dashboard/posts/edit/${post.slug}`}
@@ -532,7 +524,6 @@ export default function PostsPage() {
           )}
         </div>
 
-        {/* Footer Statistics - Responsive */}
         {posts.length > 0 && (
           <div className="grid grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
             <div className="text-center">

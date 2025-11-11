@@ -5,29 +5,30 @@ export interface IUser extends Document {
   email: string;
   password: string;
   is_active: boolean;
+  is_system: boolean;
   created_at: Date;
   updated_at: Date;
 }
 
 const UserSchema = new Schema<IUser>({
-  name: { 
-    type: String, 
+  name: {
+    type: String,
     required: true,
     trim: true,
     minlength: 2,
     maxlength: 50
   },
-  email: { 
-    type: String, 
-    required: true, 
+  email: {
+    type: String,
+    required: true,
     unique: true,
     lowercase: true,
     trim: true,
     index: true,
     match: /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   },
-  password: { 
-    type: String, 
+  password: {
+    type: String,
     required: true,
     minlength: 6
   },
@@ -35,9 +36,14 @@ const UserSchema = new Schema<IUser>({
     type: Boolean,
     default: true,
     index: true
+  },
+  is_system: {
+    type: Boolean,
+    default: false,
+    index: true
   }
-}, { 
-  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } 
+}, {
+  timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });
 
 export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

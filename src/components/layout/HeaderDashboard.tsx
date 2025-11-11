@@ -117,12 +117,10 @@ export default function HeaderDashboard() {
   const visibleMenuItems = useMemo(
     () =>
       menuItems.filter((item) => {
-        // Hide all items for users with only posts.read
         if (hasOnlyPostsRead) {
           return false;
         }
 
-        // For items requiring manage permissions
         if (item.requireManagePermissions) {
           if (item.name === "Posts") {
             return canManagePosts;
@@ -132,7 +130,6 @@ export default function HeaderDashboard() {
           }
         }
 
-        // For items with specific permission requirements
         if (item.permission) {
           return hasPermission(item.permission);
         }
@@ -151,7 +148,6 @@ export default function HeaderDashboard() {
   return (
     <header className="w-full border-b bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        {/* Mobile Menu */}
         <div className="md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -171,7 +167,6 @@ export default function HeaderDashboard() {
                 </SheetDescription>
               </SheetHeader>
 
-              {/* Logo */}
               <div className="mb-8 flex justify-center">
                 <Image
                   src="/Logo-with-Text.svg"
@@ -183,7 +178,6 @@ export default function HeaderDashboard() {
                 />
               </div>
 
-              {/* Navigation Links */}
               {loading ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -217,7 +211,6 @@ export default function HeaderDashboard() {
                 </nav>
               )}
 
-              {/* Mobile Actions */}
               <div className="border-t pt-4 mt-auto flex flex-col gap-2">
                 <Link href="/dashboard/profile" onClick={() => setOpen(false)}>
                   <Button
@@ -252,7 +245,6 @@ export default function HeaderDashboard() {
           </Sheet>
         </div>
 
-        {/* Desktop - Home Button */}
         <Link href="/" className="hidden md:block">
           <Button variant="outline" className="font-medium">
             <Home className="mr-2 h-4 w-4" />
@@ -260,7 +252,6 @@ export default function HeaderDashboard() {
           </Button>
         </Link>
 
-        {/* Mobile - Logo */}
         <div className="md:hidden">
           <Image
             src="/Logo-with-Text.svg"
@@ -272,7 +263,6 @@ export default function HeaderDashboard() {
           />
         </div>
 
-        {/* Desktop - Actions */}
         <div className="hidden md:flex items-center gap-3">
           <Link href="/dashboard/profile">
             <Button variant="outline" className="font-medium">
@@ -288,7 +278,6 @@ export default function HeaderDashboard() {
           </Button>
         </div>
 
-        {/* Mobile - Logout Button */}
         <Button
           onClick={() => signOut({ callbackUrl: "/auth/login" })}
           className="md:hidden font-medium"

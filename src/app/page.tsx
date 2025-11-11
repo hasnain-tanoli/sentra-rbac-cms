@@ -63,7 +63,6 @@ export default async function HomePage() {
   const session = await getServerSession(authOptions);
   const isLoggedIn = !!session?.user;
 
-  // Check user permissions
   let hasOnlyPostsRead = false;
   let canAccessDashboard = false;
 
@@ -72,7 +71,6 @@ export default async function HomePage() {
     hasOnlyPostsRead =
       permissions.length === 1 && permissions[0] === "posts.read";
 
-    // User can access dashboard if they have any management permissions
     canAccessDashboard = permissions.some(
       (p) =>
         p === "posts.create" ||
@@ -98,7 +96,6 @@ export default async function HomePage() {
       <Header />
 
       <main className="mx-auto max-w-6xl px-6 md:px-8 py-16">
-        {/* Hero Section */}
         <section className="text-center mb-16 space-y-6">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
             <Sparkles className="h-4 w-4" />
@@ -117,7 +114,6 @@ export default async function HomePage() {
             TypeScript. Manage your content seamlessly with RBAC architecture.
           </p>
 
-          {/* Conditional CTAs based on auth status and permissions */}
           <div className="flex flex-wrap gap-4 justify-center pt-4">
             {!isLoggedIn ? (
               <>
@@ -156,7 +152,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Posts Section */}
         <section className="w-full space-y-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>

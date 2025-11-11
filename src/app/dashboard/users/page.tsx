@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
-import DashboardLayout from "@/components/layout/DashboardLayout";
+import { useEffect, useState, useCallback } from "react";
+import { User } from "@/types/user";
+import { Role } from "@/types/role";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -29,338 +31,293 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
-  Loader2,
-  Users,
-  UserPlus,
   Pencil,
   Trash2,
+  Plus,
+  Users as UsersIcon,
   ShieldCheck,
+  Lock,
   Mail,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { usePermissions } from "@/hooks/usePermission";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Link from "next/link";
-
-interface Role {
-  _id: string;
-  title: string;
-  key: string;
-  description?: string;
-}
-
-interface Permission {
-  _id: string;
-  resource: string;
-  action: string;
-  key: string;
-  description?: string;
-}
-
-interface User {
-  _id: string;
-  name: string;
-  email: string;
-  roles: Role[];
-  permissions: Permission[];
-}
-
-interface ApiResponse<T = unknown> {
-  success: boolean;
-  message: string;
-  data?: T;
-  code?: string;
-}
-
-function errorMessage(err: unknown, fallback = "Unexpected error"): string {
-  return err instanceof Error ? err.message : fallback;
-}
-
-async function safeJson<T>(res: Response): Promise<T | null> {
-  try {
-    const ct = res.headers.get("content-type");
-    if (!ct || !ct.includes("application/json")) return null;
-    const parsed = (await res.json()) as T;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function extractMessage(
-  res: Response,
-  fallback: string,
-  payload: ApiResponse<unknown> | null
-): string {
-  if (payload?.message) return payload.message;
-  switch (res.status) {
-    case 401:
-      return "Unauthorized. Please log in.";
-    case 403:
-      return "You don't have permission to perform this action.";
-    case 404:
-      return "Not found.";
-    default:
-      return fallback;
-  }
-}
+import { useRouter } from "next/navigation";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-
-  const [selectedUser, setSelectedUser] = useState<string>("");
-  const [selectedRole, setSelectedRole] = useState<string>("");
-  const [roleKeyManual, setRoleKeyManual] = useState<string>("");
-
-  const [dialogOpen, setDialogOpen] = useState<boolean>(false);
-
-  const [loading, setLoading] = useState<boolean>(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  const [assigning, setAssigning] = useState<boolean>(false);
-  const [assignError, setAssignError] = useState<string | null>(null);
-
-  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role_ids: [] as string[],
+  });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState("");
+  const [selectedRole, setSelectedRole] = useState("");
 
   const { toast } = useToast();
+  const router = useRouter();
 
-  const { permissions, loading: permsLoading } = usePermissions();
-  const permsSet = useMemo(() => new Set(permissions), [permissions]);
-
-  const hasKey = (resource: string, action: string): boolean =>
-    permsSet.has(`${resource}.${action}`) ||
-    permsSet.has(`${resource}:${action}`);
-
-  const canCreateUsers = hasKey("users", "create");
-  const canUpdateUsers = hasKey("users", "update");
-  const canDeleteUsers = hasKey("users", "delete");
-
-  const canReadRoles = hasKey("roles", "read");
-  const canUpdateRoles = hasKey("roles", "update");
-
-  const canReadPermissions = hasKey("permissions", "read");
-
-  const canAssignRoles = canUpdateRoles || canUpdateUsers;
-
-  const showRolesColumn = canReadRoles;
-  const showPermissionsColumn = canReadPermissions;
-
-  const fetchData = useCallback(
-    async (opts: { fetchRoles: boolean }) => {
-      setLoading(true);
-      setFetchError(null);
-
-      try {
-        const resUsers = await fetch("/api/users");
-        const dataUsers = await safeJson<ApiResponse<User[]>>(resUsers);
-
-        if (
-          resUsers.ok &&
-          dataUsers?.success &&
-          Array.isArray(dataUsers.data)
-        ) {
-          setUsers(dataUsers.data);
-        } else {
-          const msg = extractMessage(
-            resUsers,
-            "Failed to load users.",
-            dataUsers
-          );
-          setFetchError((prev) => prev ?? msg);
-          toast({ title: "Error", description: msg, variant: "destructive" });
-        }
-
-        if (opts.fetchRoles) {
-          const resRoles = await fetch("/api/roles");
-          const dataRoles = await safeJson<ApiResponse<Role[]>>(resRoles);
-
-          if (
-            resRoles.ok &&
-            dataRoles?.success &&
-            Array.isArray(dataRoles.data)
-          ) {
-            setRoles(dataRoles.data);
-          } else {
-            if (resRoles.status !== 403) {
-              const msg = extractMessage(
-                resRoles,
-                "Failed to load roles.",
-                dataRoles
-              );
-              setFetchError((prev) => prev ?? msg);
-              toast({
-                title: "Error",
-                description: msg,
-                variant: "destructive",
-              });
-            }
-            setRoles([]);
-          }
-        } else {
-          setRoles([]);
-        }
-      } catch (err: unknown) {
-        const msg = errorMessage(err, "Network error loading users and roles.");
-        setFetchError(msg);
-        toast({ title: "Error", description: msg, variant: "destructive" });
-      } finally {
-        setLoading(false);
+  const fetchUsers = useCallback(async () => {
+    try {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      if (data.success) {
+        setUsers(data.data || []);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to fetch users",
+          variant: "destructive",
+        });
       }
-    },
-    [toast]
-  );
+    } catch (err) {
+      console.error("Error fetching users:", err);
+      toast({
+        title: "Error",
+        description: "Failed to fetch users",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  const fetchRoles = useCallback(async () => {
+    try {
+      const res = await fetch("/api/roles");
+      const data = await res.json();
+      if (data.success) {
+        setRoles(data.data || []);
+      }
+    } catch (err) {
+      console.error("Error fetching roles:", err);
+    }
+  }, []);
 
   useEffect(() => {
-    if (!permsLoading) {
-      void fetchData({ fetchRoles: canReadRoles });
+    async function loadData() {
+      await fetchUsers();
+      await fetchRoles();
     }
-  }, [permsLoading, canReadRoles, fetchData]);
+    loadData();
+  }, [fetchUsers, fetchRoles]);
+
+  const handleCreateUser = async () => {
+    if (
+      !newUser.name.trim() ||
+      !newUser.email.trim() ||
+      !newUser.password.trim()
+    ) {
+      toast({
+        title: "Validation Error",
+        description: "Name, email, and password are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch("/api/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newUser.name.trim(),
+          email: newUser.email.trim(),
+          password: newUser.password.trim(),
+          role_ids: newUser.role_ids.length > 0 ? newUser.role_ids : undefined,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: `User created successfully${
+            newUser.role_ids.length > 0
+              ? ` with ${newUser.role_ids.length} role(s)`
+              : ""
+          }!`,
+        });
+        await fetchUsers();
+        setCreateDialogOpen(false);
+        setNewUser({ name: "", email: "", password: "", role_ids: [] });
+      } else {
+        toast({
+          title: "Error",
+          description: data.message || "Failed to create user",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error creating user:", err);
+      toast({
+        title: "Error",
+        description: "Failed to create user",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const openDeleteDialog = (user: User) => {
+    if (!user?._id) {
+      toast({
+        title: "Error",
+        description: "Invalid user selected",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (user.is_system) {
+      toast({
+        title: "Cannot Delete",
+        description:
+          "System users cannot be deleted as they are required for core functionality.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDeletingUser(user);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteUser = async () => {
+    if (!deletingUser?._id) {
+      toast({
+        title: "Error",
+        description: "Invalid user selected",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/users?id=${deletingUser._id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: data.message || "User deleted successfully",
+        });
+        await fetchUsers();
+        setDeleteDialogOpen(false);
+        setDeletingUser(null);
+      } else {
+        toast({
+          title: "Error",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Error deleting user:", err);
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAssignRole = async () => {
-    setAssignError(null);
-
-    if (!canAssignRoles) {
-      const msg = "You don't have permission to assign roles.";
-      setAssignError(msg);
-      toast({ title: "Forbidden", description: msg, variant: "destructive" });
+    if (!selectedUser || !selectedRole) {
+      toast({
+        title: "Validation Error",
+        description: "Please select both user and role",
+        variant: "destructive",
+      });
       return;
     }
 
-    if (!selectedUser) {
-      setAssignError("Please select a user.");
-      return;
-    }
-
-    let roleKeyToAssign = "";
-    if (canReadRoles) {
-      const roleObj = roles.find((r) => r._id === selectedRole);
-      if (!selectedRole || !roleObj?.key) {
-        setAssignError("Please select a role.");
-        return;
-      }
-      roleKeyToAssign = roleObj.key;
-    } else {
-      const trimmed = roleKeyManual.trim();
-      if (!trimmed) {
-        setAssignError("Enter a role key.");
-        return;
-      }
-      roleKeyToAssign = trimmed;
-    }
-
-    setAssigning(true);
+    setLoading(true);
     try {
+      const role = roles.find((r) => r._id === selectedRole);
+      if (!role) {
+        toast({
+          title: "Error",
+          description: "Role not found",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const res = await fetch("/api/user-roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: selectedUser,
-          role_keys: [roleKeyToAssign],
+          role_keys: [role.key],
         }),
       });
 
-      const data = await safeJson<ApiResponse<unknown>>(res);
+      const data = await res.json();
 
-      if (res.ok && data?.success) {
-        toast({ title: "Success", description: "Role assigned successfully." });
-        await fetchData({ fetchRoles: canReadRoles });
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Role assigned to user successfully",
+        });
+        await fetchUsers();
         setSelectedUser("");
         setSelectedRole("");
-        setRoleKeyManual("");
-        setDialogOpen(false);
+        setAssignDialogOpen(false);
       } else {
-        const msg = extractMessage(res, "Failed to assign role.", data);
-        setAssignError(msg);
-        toast({ title: "Error", description: msg, variant: "destructive" });
+        toast({
+          title: "Error",
+          description: data.message || "Failed to assign role",
+          variant: "destructive",
+        });
       }
-    } catch (err: unknown) {
-      const msg = errorMessage(err, "Network error while assigning role.");
-      setAssignError(msg);
-      toast({ title: "Error", description: msg, variant: "destructive" });
-    } finally {
-      setAssigning(false);
-    }
-  };
-
-  const openDeleteDialog = (id: string) => {
-    setDeleteError(null);
-    setDeleteUserId(id);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!deleteUserId) return;
-
-    if (!canDeleteUsers) {
-      const msg = "You don't have permission to delete users.";
-      setDeleteError(msg);
-      toast({ title: "Forbidden", description: msg, variant: "destructive" });
-      return;
-    }
-
-    setIsDeleting(true);
-    setDeleteError(null);
-
-    try {
-      const res = await fetch(`/api/users?id=${deleteUserId}`, {
-        method: "DELETE",
+    } catch (err) {
+      console.error("Error assigning role:", err);
+      toast({
+        title: "Error",
+        description: "Failed to assign role",
+        variant: "destructive",
       });
-      const data = await safeJson<ApiResponse<unknown>>(res);
-
-      if (res.ok && data?.success) {
-        setUsers((prev) => prev.filter((u) => u._id !== deleteUserId));
-        toast({ title: "Success", description: "User deleted successfully." });
-        setDeleteUserId(null);
-      } else {
-        const msg = extractMessage(res, "Failed to delete user.", data);
-        setDeleteError(msg);
-        toast({ title: "Error", description: msg, variant: "destructive" });
-      }
-    } catch (err: unknown) {
-      const msg = errorMessage(err, "Network error deleting user.");
-      setDeleteError(msg);
-      toast({ title: "Error", description: msg, variant: "destructive" });
     } finally {
-      setIsDeleting(false);
+      setLoading(false);
     }
   };
 
-  const targetUser = deleteUserId
-    ? users.find((u) => u._id === deleteUserId)
-    : undefined;
+  const toggleRole = (roleId: string) => {
+    setNewUser((prev) => ({
+      ...prev,
+      role_ids: prev.role_ids.includes(roleId)
+        ? prev.role_ids.filter((id) => id !== roleId)
+        : [...prev.role_ids, roleId],
+    }));
+  };
 
-  const uiLoading = loading || permsLoading;
-
-  const totalRoleAssignments = users.reduce(
-    (sum, user) => sum + (user.roles?.length || 0),
-    0
-  );
-
-  if (uiLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center h-96">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
-            <p className="text-muted-foreground">Loading users...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const getAssignedRoles = (userId: string) => {
+    const user = users.find((u) => u._id === userId);
+    return user?.roles || [];
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Header - Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-              <Users className="h-6 w-6 sm:h-8 sm:w-8" />
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold flex items-center gap-2">
+              <UsersIcon className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8" />
               Users Management
             </h1>
             <p className="text-muted-foreground mt-2 text-sm sm:text-base">
@@ -369,72 +326,174 @@ export default function UsersPage() {
           </div>
         </div>
 
-        {/* Error Banner */}
-        {fetchError && (
-          <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {fetchError}
-          </div>
-        )}
-
-        {/* Action Buttons - Responsive */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <Link href="/dashboard/users/newUser" className="w-full sm:w-auto">
-            <Button
-              className="w-full sm:w-auto"
-              disabled={!canCreateUsers || permsLoading}
-              title={!canCreateUsers ? "You need users.create permission" : ""}
-            >
-              <UserPlus className="mr-2 h-4 w-4" />
-              Create User
-            </Button>
-          </Link>
-
-          <Dialog
-            open={dialogOpen}
-            onOpenChange={(open) => {
-              if (!open) {
-                setAssignError(null);
-                setSelectedUser("");
-                setSelectedRole("");
-                setRoleKeyManual("");
-              }
-              setDialogOpen(open);
-            }}
-          >
+          <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                disabled={permsLoading || !canAssignRoles}
-                title={
-                  !canAssignRoles
-                    ? "You need roles.update or users.update to assign"
-                    : ""
-                }
-              >
+              <Button className="w-full sm:w-auto">
+                <Plus className="mr-2 h-4 w-4" />
+                Create User
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Create New User</DialogTitle>
+                <DialogDescription>
+                  Create a new user and optionally assign roles
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col gap-4 mt-4">
+                <div>
+                  <Label htmlFor="user-name" className="text-sm sm:text-base">
+                    Name *
+                  </Label>
+                  <Input
+                    id="user-name"
+                    placeholder="Enter user's full name"
+                    value={newUser.name}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, name: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="user-email" className="text-sm sm:text-base">
+                    Email *
+                  </Label>
+                  <Input
+                    id="user-email"
+                    type="email"
+                    placeholder="user@example.com"
+                    value={newUser.email}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, email: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div>
+                  <Label
+                    htmlFor="user-password"
+                    className="text-sm sm:text-base"
+                  >
+                    Password *
+                  </Label>
+                  <Input
+                    id="user-password"
+                    type="password"
+                    placeholder="Enter password (min 6 characters)"
+                    value={newUser.password}
+                    onChange={(e) =>
+                      setNewUser({ ...newUser, password: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="border rounded-md p-4 max-h-64 overflow-y-auto">
+                  <p className="text-xs sm:text-sm font-medium mb-3">
+                    Assign Roles ({newUser.role_ids.length} selected):
+                  </p>
+                  {roles.length === 0 ? (
+                    <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">
+                      No roles available
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {roles
+                        .filter((role) => role && role._id)
+                        .map((role) => (
+                          <label
+                            key={role._id}
+                            className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/50 px-2 rounded"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={newUser.role_ids.includes(role._id)}
+                              onChange={() => toggleRole(role._id)}
+                              className="rounded"
+                            />
+                            <span className="text-xs sm:text-sm flex-1 flex items-center gap-2">
+                              <span className="font-medium">{role.title}</span>
+                              {role.is_system && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Lock className="h-3 w-3 mr-1" />
+                                  System
+                                </Badge>
+                              )}
+                            </span>
+                            {role.description && (
+                              <span className="text-xs text-muted-foreground hidden sm:inline">
+                                {role.description}
+                              </span>
+                            )}
+                          </label>
+                        ))}
+                    </div>
+                  )}
+                  {newUser.role_ids.length === 0 && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 p-2 rounded-md mt-2">
+                      ⚠️ No roles selected. Default &quot;Author&quot; role will
+                      be assigned if available.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <DialogFooter className="flex-col sm:flex-row gap-2">
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => {
+                    setCreateDialogOpen(false);
+                    setNewUser({
+                      name: "",
+                      email: "",
+                      password: "",
+                      role_ids: [],
+                    });
+                  }}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={handleCreateUser}
+                  disabled={
+                    loading ||
+                    !newUser.name.trim() ||
+                    !newUser.email.trim() ||
+                    !newUser.password.trim()
+                  }
+                >
+                  {loading ? "Creating..." : "Create User"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="w-full sm:w-auto">
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 Assign Role to User
               </Button>
             </DialogTrigger>
-
             <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Assign Role to User</DialogTitle>
                 <DialogDescription>
-                  Select a user and role to create a new assignment
+                  Select a user and role to assign
                 </DialogDescription>
               </DialogHeader>
 
               <div className="flex flex-col gap-4 mt-4">
                 <div>
-                  <Label htmlFor="select-user">Select User *</Label>
-                  <Select
-                    onValueChange={setSelectedUser}
-                    value={selectedUser}
-                    disabled={assigning || uiLoading}
-                  >
+                  <Label htmlFor="select-user" className="text-sm sm:text-base">
+                    Select User *
+                  </Label>
+                  <Select onValueChange={setSelectedUser} value={selectedUser}>
                     <SelectTrigger id="select-user">
-                      <SelectValue placeholder="Choose a user" />
+                      <SelectValue placeholder="Select User" />
                     </SelectTrigger>
                     <SelectContent>
                       {users.length === 0 ? (
@@ -447,6 +506,7 @@ export default function UsersPage() {
                           .map((user) => (
                             <SelectItem key={user._id} value={user._id}>
                               {user.name} ({user.email})
+                              {user.is_system && " [System]"}
                             </SelectItem>
                           ))
                       )}
@@ -454,152 +514,111 @@ export default function UsersPage() {
                   </Select>
                 </div>
 
-                {canReadRoles ? (
-                  <div>
-                    <Label htmlFor="select-role">Select Role *</Label>
-                    <Select
-                      onValueChange={setSelectedRole}
-                      value={selectedRole}
-                      disabled={assigning || uiLoading}
-                    >
-                      <SelectTrigger id="select-role">
-                        <SelectValue placeholder="Choose a role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {roles.length === 0 ? (
-                          <div className="px-2 py-1 text-sm text-muted-foreground">
-                            No roles available
-                          </div>
-                        ) : (
-                          roles
-                            .filter((role) => role && role._id)
-                            .map((role) => (
-                              <SelectItem key={role._id} value={role._id}>
-                                {role.title}
-                              </SelectItem>
-                            ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : (
-                  <div>
-                    <Label htmlFor="role-key-manual">Role Key *</Label>
-                    <Input
-                      id="role-key-manual"
-                      value={roleKeyManual}
-                      onChange={(e) => setRoleKeyManual(e.target.value)}
-                      placeholder="e.g. admin, editor, moderator"
-                      disabled={assigning || uiLoading || !canAssignRoles}
-                    />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      You don&apos;t have roles.read; enter a known role key.
-                    </p>
-                  </div>
-                )}
-
-                {assignError && (
-                  <div className="text-destructive text-sm bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
-                    {assignError}
-                  </div>
-                )}
+                <div>
+                  <Label htmlFor="select-role" className="text-sm sm:text-base">
+                    Select Role *
+                  </Label>
+                  <Select onValueChange={setSelectedRole} value={selectedRole}>
+                    <SelectTrigger id="select-role">
+                      <SelectValue placeholder="Select Role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.length === 0 ? (
+                        <div className="px-2 py-1 text-sm text-muted-foreground">
+                          No roles available
+                        </div>
+                      ) : (
+                        roles
+                          .filter((role) => role && role._id)
+                          .map((role) => (
+                            <SelectItem key={role._id} value={role._id}>
+                              {role.title}
+                              {role.is_system && " [System]"}
+                            </SelectItem>
+                          ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <DialogFooter className="flex-col sm:flex-row gap-2">
                 <Button
                   variant="outline"
                   className="w-full sm:w-auto"
-                  onClick={() => setDialogOpen(false)}
-                  disabled={assigning}
+                  onClick={() => {
+                    setAssignDialogOpen(false);
+                    setSelectedUser("");
+                    setSelectedRole("");
+                  }}
+                  disabled={loading}
                 >
                   Cancel
                 </Button>
                 <Button
                   className="w-full sm:w-auto"
                   onClick={handleAssignRole}
-                  disabled={
-                    assigning ||
-                    !canAssignRoles ||
-                    !selectedUser ||
-                    (canReadRoles ? !selectedRole : !roleKeyManual.trim())
-                  }
+                  disabled={!selectedUser || !selectedRole || loading}
                 >
-                  {assigning ? "Assigning..." : "Assign Role"}
+                  {loading ? "Assigning..." : "Assign Role"}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Delete Confirmation Dialog - Responsive */}
-        <AlertDialog
-          open={!!deleteUserId}
-          onOpenChange={(open) => {
-            if (!open) {
-              setDeleteUserId(null);
-              setDeleteError(null);
-            }
-          }}
-        >
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
           <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
                 This will permanently delete the user{" "}
-                <strong className="text-foreground">{targetUser?.name}</strong>{" "}
-                ({targetUser?.email}) and remove all their role assignments.
+                <strong className="text-foreground">
+                  {deletingUser?.name}
+                </strong>{" "}
+                ({deletingUser?.email}) and remove all their role assignments.
                 <br />
                 <br />
                 <span className="text-destructive font-medium">
                   This action cannot be undone.
                 </span>
-                {deleteError && (
-                  <div className="mt-3 text-destructive text-sm bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
-                    {deleteError}
-                  </div>
-                )}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-col sm:flex-row gap-2">
               <AlertDialogCancel
                 className="w-full sm:w-auto"
-                disabled={isDeleting}
+                disabled={loading}
               >
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={handleConfirmDelete}
-                disabled={isDeleting || !canDeleteUsers}
+                onClick={handleDeleteUser}
+                disabled={loading}
               >
-                {isDeleting ? "Deleting..." : "Delete User"}
+                {loading ? "Deleting..." : "Delete User"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
 
-        {/* Desktop Table View */}
         <div className="hidden md:block rounded-md border">
           <div className="overflow-x-auto">
             <table className="w-full table-auto border-collapse">
               <thead>
                 <tr className="bg-muted/50">
                   <th className="border-b px-4 py-3 text-left font-medium">
-                    Name
+                    User
                   </th>
                   <th className="border-b px-4 py-3 text-left font-medium">
                     Email
                   </th>
-                  {showRolesColumn && (
-                    <th className="border-b px-4 py-3 text-left font-medium">
-                      Roles
-                    </th>
-                  )}
-                  {showPermissionsColumn && (
-                    <th className="border-b px-4 py-3 text-left font-medium">
-                      Permissions
-                    </th>
-                  )}
+                  <th className="border-b px-4 py-3 text-left font-medium">
+                    Roles
+                  </th>
+                  <th className="border-b px-4 py-3 text-left font-medium">
+                    Permissions
+                  </th>
                   <th className="border-b px-4 py-3 text-left font-medium">
                     Actions
                   </th>
@@ -609,15 +628,10 @@ export default function UsersPage() {
                 {users.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={
-                        2 +
-                        (showRolesColumn ? 1 : 0) +
-                        (showPermissionsColumn ? 1 : 0) +
-                        1
-                      }
+                      colSpan={5}
                       className="px-4 py-12 text-center text-muted-foreground"
                     >
-                      <Users className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                      <UsersIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
                       <p className="text-lg font-medium mb-2">No users found</p>
                       <p className="text-sm">
                         Create your first user to get started
@@ -627,119 +641,63 @@ export default function UsersPage() {
                 ) : (
                   users
                     .filter((user) => user && user._id)
-                    .map((user) => (
-                      <tr
-                        key={user._id}
-                        className="hover:bg-muted/30 transition-colors"
-                      >
-                        <td className="border-b px-4 py-3 font-medium">
-                          {user.name}
-                        </td>
-                        <td className="border-b px-4 py-3 text-sm text-muted-foreground">
-                          {user.email}
-                        </td>
+                    .map((user) => {
+                      const assignedRoles = getAssignedRoles(user._id);
+                      const permissions = user.permissions || [];
 
-                        {showRolesColumn && (
+                      const permissionsByResource = permissions.reduce(
+                        (acc, perm) => {
+                          if (!acc[perm.resource]) {
+                            acc[perm.resource] = new Set<string>();
+                          }
+                          acc[perm.resource].add(perm.action);
+                          return acc;
+                        },
+                        {} as Record<string, Set<string>>
+                      );
+
+                      return (
+                        <tr
+                          key={user._id}
+                          className="hover:bg-muted/30 transition-colors"
+                        >
                           <td className="border-b px-4 py-3">
-                            {(() => {
-                              if (
-                                !user.roles ||
-                                !Array.isArray(user.roles) ||
-                                user.roles.length === 0
-                              ) {
-                                return (
-                                  <span className="text-muted-foreground text-sm">
-                                    —
-                                  </span>
-                                );
-                              }
-
-                              const validRoles = user.roles
-                                .filter((role) => role && role.title)
-                                .filter(
-                                  (role, index, self) =>
-                                    index ===
-                                    self.findIndex(
-                                      (r) => r.title === role.title
-                                    )
-                                );
-
-                              return (
-                                <div className="flex flex-wrap gap-1">
-                                  {validRoles.slice(0, 3).map((role, index) => (
-                                    <span
-                                      key={`user-${user._id}-role-idx-${index}`}
-                                      className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium"
-                                    >
-                                      {role.title}
-                                    </span>
-                                  ))}
-                                  {validRoles.length > 3 && (
-                                    <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium">
-                                      +{validRoles.length - 3} more
-                                    </span>
-                                  )}
-                                </div>
-                              );
-                            })()}
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{user.name}</span>
+                              {user.is_system && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Lock className="h-3 w-3 mr-1" />
+                                  System
+                                </Badge>
+                              )}
+                            </div>
                           </td>
-                        )}
-
-                        {showPermissionsColumn && (
                           <td className="border-b px-4 py-3">
-                            {user.permissions && user.permissions.length > 0 ? (
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                              <Mail className="h-3.5 w-3.5" />
+                              {user.email}
+                            </div>
+                          </td>
+                          <td className="border-b px-4 py-3">
+                            {assignedRoles.length > 0 ? (
                               <div className="flex flex-wrap gap-1">
-                                {(() => {
-                                  const validPermissions =
-                                    user.permissions.filter(
-                                      (p) =>
-                                        p && p._id && p.resource && p.action
-                                    );
-
-                                  const uniquePermissions =
-                                    validPermissions.filter(
-                                      (permission, index, self) =>
-                                        index ===
-                                        self.findIndex(
-                                          (p) =>
-                                            p.resource ===
-                                              permission.resource &&
-                                            p.action === permission.action
-                                        )
-                                    );
-
-                                  const resourceMap = uniquePermissions.reduce(
-                                    (acc, p) => {
-                                      if (!acc[p.resource]) {
-                                        acc[p.resource] = new Set<string>();
-                                      }
-                                      acc[p.resource].add(p.action);
-                                      return acc;
-                                    },
-                                    {} as Record<string, Set<string>>
-                                  );
-
-                                  const entries = Object.entries(resourceMap);
-                                  return (
-                                    <>
-                                      {entries
-                                        .slice(0, 2)
-                                        .map(([resource, actionsSet]) => (
-                                          <span
-                                            key={`${user._id}-perm-${resource}`}
-                                            className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
-                                          >
-                                            {resource} ({actionsSet.size})
-                                          </span>
-                                        ))}
-                                      {entries.length > 2 && (
-                                        <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium">
-                                          +{entries.length - 2} more
-                                        </span>
-                                      )}
-                                    </>
-                                  );
-                                })()}
+                                {assignedRoles.slice(0, 3).map((role, idx) => (
+                                  <Badge
+                                    key={idx}
+                                    variant="default"
+                                    className="text-xs flex items-center gap-1"
+                                  >
+                                    {role.title}
+                                    {role.is_system && (
+                                      <Lock className="h-2.5 w-2.5" />
+                                    )}
+                                  </Badge>
+                                ))}
+                                {assignedRoles.length > 3 && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium">
+                                    +{assignedRoles.length - 3} more
+                                  </span>
+                                )}
                               </div>
                             ) : (
                               <span className="text-muted-foreground text-sm">
@@ -747,53 +705,84 @@ export default function UsersPage() {
                               </span>
                             )}
                           </td>
-                        )}
-
-                        <td className="border-b px-4 py-3">
-                          <div className="flex gap-2">
-                            <Link href={`/dashboard/users/edit/${user._id}`}>
+                          <td className="border-b px-4 py-3">
+                            {Object.keys(permissionsByResource).length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {Object.entries(permissionsByResource)
+                                  .slice(0, 2)
+                                  .map(([resource, actionsSet]) => (
+                                    <span
+                                      key={resource}
+                                      className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
+                                    >
+                                      {resource} ({actionsSet.size})
+                                    </span>
+                                  ))}
+                                {Object.keys(permissionsByResource).length >
+                                  2 && (
+                                  <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium">
+                                    +
+                                    {Object.keys(permissionsByResource).length -
+                                      2}{" "}
+                                    more
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">
+                                —
+                              </span>
+                            )}
+                          </td>
+                          <td className="border-b px-4 py-3">
+                            <div className="flex gap-2">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                disabled={!canUpdateUsers || permsLoading}
-                                title={
-                                  !canUpdateUsers
-                                    ? "You need users.update"
-                                    : "Edit user"
+                                onClick={() =>
+                                  router.push(
+                                    `/dashboard/users/edit/${user._id}`
+                                  )
                                 }
+                                title="Edit user"
                               >
                                 <Pencil className="h-4 w-4" />
                               </Button>
-                            </Link>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={!canDeleteUsers || permsLoading}
-                              title={
-                                !canDeleteUsers
-                                  ? "You need users.delete"
-                                  : "Delete user"
-                              }
-                              onClick={() => openDeleteDialog(user._id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openDeleteDialog(user)}
+                                disabled={user.is_system}
+                                title={
+                                  user.is_system
+                                    ? "System users cannot be deleted"
+                                    : "Delete user"
+                                }
+                              >
+                                <Trash2
+                                  className={`h-4 w-4 ${
+                                    user.is_system
+                                      ? "text-muted-foreground"
+                                      : "text-destructive"
+                                  }`}
+                                />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                 )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Mobile Card View */}
         <div className="md:hidden space-y-4">
           {users.length === 0 ? (
             <div className="rounded-md border">
               <div className="px-4 py-12 text-center text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                <UsersIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
                 <p className="text-lg font-medium mb-2">No users found</p>
                 <p className="text-sm">Create your first user to get started</p>
               </div>
@@ -801,163 +790,129 @@ export default function UsersPage() {
           ) : (
             users
               .filter((user) => user && user._id)
-              .map((user) => (
-                <div
-                  key={user._id}
-                  className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
-                >
-                  {/* Name & Email */}
-                  <div>
-                    <h3 className="font-semibold text-base">{user.name}</h3>
-                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-1">
-                      <Mail className="h-3.5 w-3.5" />
-                      <span>{user.email}</span>
-                    </div>
-                  </div>
+              .map((user) => {
+                const assignedRoles = getAssignedRoles(user._id);
+                const permissions = user.permissions || [];
 
-                  {/* Roles */}
-                  {showRolesColumn && (
+                const permissionsByResource = permissions.reduce(
+                  (acc, perm) => {
+                    if (!acc[perm.resource]) {
+                      acc[perm.resource] = new Set<string>();
+                    }
+                    acc[perm.resource].add(perm.action);
+                    return acc;
+                  },
+                  {} as Record<string, Set<string>>
+                );
+
+                return (
+                  <div
+                    key={user._id}
+                    className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
+                  >
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-base">{user.name}</h3>
+                        {user.is_system && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Lock className="h-3 w-3 mr-1" />
+                            System
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <Mail className="h-3.5 w-3.5" />
+                        <span>{user.email}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                        <ShieldCheck className="h-3.5 w-3.5" />
                         Roles
                       </p>
-                      {(() => {
-                        if (
-                          !user.roles ||
-                          !Array.isArray(user.roles) ||
-                          user.roles.length === 0
-                        ) {
-                          return (
-                            <span className="text-muted-foreground text-sm">
-                              No roles assigned
-                            </span>
-                          );
-                        }
-
-                        const validRoles = user.roles
-                          .filter((role) => role && role.title)
-                          .filter(
-                            (role, index, self) =>
-                              index ===
-                              self.findIndex((r) => r.title === role.title)
-                          );
-
-                        return (
-                          <div className="flex flex-wrap gap-1">
-                            {validRoles.map((role, index) => (
-                              <span
-                                key={`user-${user._id}-role-idx-${index}`}
-                                className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-primary text-xs font-medium"
-                              >
-                                {role.title}
-                              </span>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </div>
-                  )}
-
-                  {/* Permissions */}
-                  {showPermissionsColumn && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">
-                        Permissions
-                      </p>
-                      {user.permissions && user.permissions.length > 0 ? (
+                      {assignedRoles.length > 0 ? (
                         <div className="flex flex-wrap gap-1">
-                          {(() => {
-                            const validPermissions = user.permissions.filter(
-                              (p) => p && p._id && p.resource && p.action
-                            );
-
-                            const uniquePermissions = validPermissions.filter(
-                              (permission, index, self) =>
-                                index ===
-                                self.findIndex(
-                                  (p) =>
-                                    p.resource === permission.resource &&
-                                    p.action === permission.action
-                                )
-                            );
-
-                            const resourceMap = uniquePermissions.reduce(
-                              (acc, p) => {
-                                if (!acc[p.resource]) {
-                                  acc[p.resource] = new Set<string>();
-                                }
-                                acc[p.resource].add(p.action);
-                                return acc;
-                              },
-                              {} as Record<string, Set<string>>
-                            );
-
-                            const entries = Object.entries(resourceMap);
-                            return (
-                              <>
-                                {entries.map(([resource, actionsSet]) => (
-                                  <span
-                                    key={`${user._id}-perm-${resource}`}
-                                    className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
-                                  >
-                                    {resource} ({actionsSet.size})
-                                  </span>
-                                ))}
-                              </>
-                            );
-                          })()}
+                          {assignedRoles.map((role, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="default"
+                              className="text-xs flex items-center gap-1"
+                            >
+                              {role.title}
+                              {role.is_system && (
+                                <Lock className="h-2.5 w-2.5" />
+                              )}
+                            </Badge>
+                          ))}
                         </div>
                       ) : (
-                        <span className="text-muted-foreground text-sm">
+                        <span className="text-sm text-muted-foreground">
+                          No roles assigned
+                        </span>
+                      )}
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                        <Lock className="h-3.5 w-3.5" />
+                        Permissions
+                      </p>
+                      {Object.keys(permissionsByResource).length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {Object.entries(permissionsByResource).map(
+                            ([resource, actionsSet]) => (
+                              <span
+                                key={resource}
+                                className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
+                              >
+                                {resource} ({actionsSet.size})
+                              </span>
+                            )
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">
                           No permissions
                         </span>
                       )}
                     </div>
-                  )}
 
-                  {/* Actions */}
-                  <div className="flex gap-2 pt-2">
-                    <Link
-                      href={`/dashboard/users/edit/${user._id}`}
-                      className="flex-1"
-                    >
+                    <div className="flex gap-2 pt-2">
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full"
-                        disabled={!canUpdateUsers || permsLoading}
-                        title={
-                          !canUpdateUsers
-                            ? "You need users.update"
-                            : "Edit user"
+                        className="flex-1"
+                        onClick={() =>
+                          router.push(`/dashboard/users/edit/${user._id}`)
                         }
                       >
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
                       </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      disabled={!canDeleteUsers || permsLoading}
-                      title={
-                        !canDeleteUsers
-                          ? "You need users.delete"
-                          : "Delete user"
-                      }
-                      onClick={() => openDeleteDialog(user._id)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2 text-destructive" />
-                      Delete
-                    </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => openDeleteDialog(user)}
+                        disabled={user.is_system}
+                      >
+                        <Trash2
+                          className={`h-4 w-4 mr-2 ${
+                            user.is_system
+                              ? "text-muted-foreground"
+                              : "text-destructive"
+                          }`}
+                        />
+                        {user.is_system ? "Protected" : "Delete"}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
           )}
         </div>
 
-        {/* Footer Statistics - Responsive */}
         {users.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
             <div className="text-center">
@@ -966,24 +921,20 @@ export default function UsersPage() {
               </p>
               <p className="text-lg sm:text-xl font-bold">{users.length}</p>
             </div>
-            {showRolesColumn && (
-              <div className="text-center sm:border-x">
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-                  Role Assignments
-                </p>
-                <p className="text-lg sm:text-xl font-bold">
-                  {totalRoleAssignments}
-                </p>
-              </div>
-            )}
-            {showRolesColumn && (
-              <div className="text-center">
-                <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-                  Available Roles
-                </p>
-                <p className="text-lg sm:text-xl font-bold">{roles.length}</p>
-              </div>
-            )}
+            <div className="text-center sm:border-x">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                System Users
+              </p>
+              <p className="text-lg sm:text-xl font-bold">
+                {users.filter((u) => u.is_system).length}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+                Total Roles
+              </p>
+              <p className="text-lg sm:text-xl font-bold">{roles.length}</p>
+            </div>
           </div>
         )}
       </div>

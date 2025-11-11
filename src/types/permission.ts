@@ -4,4 +4,5 @@ export interface Permission {
   action: string;
   key: string;
   description?: string;
+  is_system?: boolean;
 }

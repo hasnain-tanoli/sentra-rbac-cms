@@ -6,11 +6,14 @@ export type Resource = typeof RESOURCES[number];
 export const ACTIONS = ['create', 'read', 'update', 'delete'] as const;
 export type Action = typeof ACTIONS[number];
 
+export const SYSTEM_RESOURCES: Resource[] = ['users', 'roles', 'permissions', 'dashboard'];
+
 export interface IPermission extends Document {
   key: string;
   resource: Resource;
   action: Action;
   description?: string;
+  is_system: boolean;
   created_at: Date;
   updated_at: Date;
 }
@@ -21,6 +24,7 @@ const PermissionSchema = new Schema<IPermission>(
     resource: { type: String, enum: RESOURCES, required: true, index: true },
     action: { type: String, enum: ACTIONS, required: true, index: true },
     description: { type: String },
+    is_system: { type: Boolean, default: false, index: true },
   },
   {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' },
