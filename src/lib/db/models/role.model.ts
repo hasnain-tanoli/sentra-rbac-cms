@@ -4,7 +4,7 @@ export interface IRole extends Document {
   title: string;
   key: string;
   description?: string;
-  is_system: boolean;
+  is_system?: boolean;
   created_at: Date;
   updated_at: Date;
 }

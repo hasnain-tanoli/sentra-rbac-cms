@@ -9,7 +9,7 @@
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
-    "noEmit": true, // Next.js handles transpilation, so this should be true
+    "noEmit": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -30,15 +30,14 @@
   },
   "include": [
     "next-env.d.ts",
-    "src/**/*.ts", // Be specific to the 'src' directory
+    "src/**/*.ts",
     "src/**/*.tsx",
     ".next/types/**/*.ts",
-    ".next\\dev/types/**/*.ts",
     ".next\\dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "scripts",
     "dist"
-  ] // Explicitly exclude scripts and dist
+  ]
 }
