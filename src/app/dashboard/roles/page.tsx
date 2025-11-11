@@ -19,13 +19,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -72,9 +65,6 @@ export default function RolesPage() {
   >([]);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingRole, setDeletingRole] = useState<Role | null>(null);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState("");
-  const [selectedRole, setSelectedRole] = useState("");
 
   const { toast } = useToast();
 
@@ -209,24 +199,42 @@ export default function RolesPage() {
         const newRoleId = data.data._id;
 
         if (selectedPermissions.length > 0) {
-          await Promise.all(
-            selectedPermissions.map((permissionId) =>
-              fetch("/api/role-permissions", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  role_id: newRoleId,
-                  permission_id: permissionId,
-                }),
-              })
-            )
-          );
-        }
+          const permissionKeys = selectedPermissions
+            .map((permId) => {
+              const perm = permissions.find((p) => p._id === permId);
+              return perm?.key;
+            })
+            .filter(Boolean);
 
-        toast({
-          title: "Success",
-          description: `Role created with ${selectedPermissions.length} permission(s)`,
-        });
+          const permRes = await fetch("/api/role-permissions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              role_id: newRoleId,
+              permission_keys: permissionKeys,
+            }),
+          });
+
+          const permData = await permRes.json();
+
+          if (permData.success) {
+            toast({
+              title: "Success",
+              description: `Role created with ${permData.data.assignedCount} permission(s)`,
+            });
+          } else {
+            toast({
+              title: "Partial Success",
+              description: `Role created but failed to assign permissions: ${permData.message}`,
+              variant: "destructive",
+            });
+          }
+        } else {
+          toast({
+            title: "Success",
+            description: "Role created successfully",
+          });
+        }
 
         await Promise.all([fetchRoles(), fetchRolePermissions()]);
         setCreateDialogOpen(false);
@@ -332,26 +340,38 @@ export default function RolesPage() {
           (rp) => !editSelectedPermissions.includes(rp.permission_id._id)
         );
 
-        await Promise.all(
-          toAdd.map((permissionId) =>
-            fetch("/api/role-permissions", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                role_id: editingRole._id,
-                permission_id: permissionId,
-              }),
+        if (toAdd.length > 0) {
+          const permissionKeys = toAdd
+            .map((permId) => {
+              const perm = permissions.find((p) => p._id === permId);
+              return perm?.key;
             })
-          )
-        );
+            .filter(Boolean);
 
-        await Promise.all(
-          toRemove.map((rp) =>
-            fetch(`/api/role-permissions/${rp._id}`, {
-              method: "DELETE",
-            })
-          )
-        );
+          await fetch("/api/role-permissions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              role_id: editingRole._id,
+              permission_keys: permissionKeys,
+            }),
+          });
+        }
+
+        if (toRemove.length > 0) {
+          await Promise.all(
+            toRemove.map((rp) =>
+              fetch("/api/role-permissions", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  role_id: editingRole._id,
+                  permission_id: rp.permission_id._id,
+                }),
+              })
+            )
+          );
+        }
 
         toast({
           title: "Success",
@@ -448,57 +468,6 @@ export default function RolesPage() {
       toast({
         title: "Error",
         description: "Failed to delete role",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAssignRole = async () => {
-    if (!selectedUser || !selectedRole) {
-      toast({
-        title: "Validation Error",
-        description: "Please select both user and role",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/user-roles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: selectedUser,
-          role_id: selectedRole,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        toast({
-          title: "Success",
-          description: "Role assigned to user successfully",
-        });
-        await fetchAssignments();
-        setSelectedUser("");
-        setSelectedRole("");
-        setAssignDialogOpen(false);
-      } else {
-        toast({
-          title: "Error",
-          description: data.message || "Failed to assign role",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      console.error("Error assigning role:", err);
-      toast({
-        title: "Error",
-        description: "Failed to assign role",
         variant: "destructive",
       });
     } finally {
@@ -727,94 +696,6 @@ export default function RolesPage() {
                   disabled={loading || !newRoleTitle.trim()}
                 >
                   {loading ? "Creating..." : "Create Role"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <UsersIcon className="mr-2 h-4 w-4" />
-                Assign Role to User
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[90vw] sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Assign Role to User</DialogTitle>
-                <DialogDescription>
-                  Select a user and role to assign
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="flex flex-col gap-4 mt-4">
-                <div>
-                  <Label htmlFor="select-user">Select User *</Label>
-                  <Select onValueChange={setSelectedUser} value={selectedUser}>
-                    <SelectTrigger id="select-user">
-                      <SelectValue placeholder="Select User" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.length === 0 ? (
-                        <div className="px-2 py-1 text-sm text-muted-foreground">
-                          No users available
-                        </div>
-                      ) : (
-                        users
-                          .filter((user) => user && user._id)
-                          .map((user) => (
-                            <SelectItem key={user._id} value={user._id}>
-                              {user.name} ({user.email})
-                            </SelectItem>
-                          ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="select-role">Select Role *</Label>
-                  <Select onValueChange={setSelectedRole} value={selectedRole}>
-                    <SelectTrigger id="select-role">
-                      <SelectValue placeholder="Select Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.length === 0 ? (
-                        <div className="px-2 py-1 text-sm text-muted-foreground">
-                          No roles available
-                        </div>
-                      ) : (
-                        roles
-                          .filter((role) => role && role._id)
-                          .map((role) => (
-                            <SelectItem key={role._id} value={role._id}>
-                              {role.title}
-                              {role.is_system && " (System)"}
-                            </SelectItem>
-                          ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <DialogFooter className="flex-col sm:flex-row gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setAssignDialogOpen(false);
-                    setSelectedUser("");
-                    setSelectedRole("");
-                  }}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleAssignRole}
-                  disabled={!selectedUser || !selectedRole || loading}
-                >
-                  {loading ? "Assigning..." : "Assign Role"}
                 </Button>
               </DialogFooter>
             </DialogContent>

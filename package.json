@@ -8,11 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx --env-file .env.local scripts/seed.ts",
-    "migrate:system-permissions": "node scripts/update-permissions.mjs",
     "promote": "tsx --env-file .env.local scripts/promote-user.ts",
     "setup:super-admin": "node scripts/setup-super-admin.mjs",
-    "make:super-admin:email": "node scripts/make-user-super-admin-args.mjs",
-    "migrate:users": "node ./scripts/migrate-users.mjs"
+    "seed:roles": "tsx scripts/seed-roles.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

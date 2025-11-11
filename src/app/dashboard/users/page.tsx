@@ -15,13 +15,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -59,9 +52,6 @@ export default function UsersPage() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState("");
-  const [selectedRole, setSelectedRole] = useState("");
 
   const { toast } = useToast();
   const router = useRouter();
@@ -236,67 +226,6 @@ export default function UsersPage() {
     }
   };
 
-  const handleAssignRole = async () => {
-    if (!selectedUser || !selectedRole) {
-      toast({
-        title: "Validation Error",
-        description: "Please select both user and role",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const role = roles.find((r) => r._id === selectedRole);
-      if (!role) {
-        toast({
-          title: "Error",
-          description: "Role not found",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      const res = await fetch("/api/user-roles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: selectedUser,
-          role_keys: [role.key],
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        toast({
-          title: "Success",
-          description: "Role assigned to user successfully",
-        });
-        await fetchUsers();
-        setSelectedUser("");
-        setSelectedRole("");
-        setAssignDialogOpen(false);
-      } else {
-        toast({
-          title: "Error",
-          description: data.message || "Failed to assign role",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      console.error("Error assigning role:", err);
-      toast({
-        title: "Error",
-        description: "Failed to assign role",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const toggleRole = (roleId: string) => {
     setNewUser((prev) => ({
       ...prev,
@@ -402,15 +331,20 @@ export default function UsersPage() {
                       {roles
                         .filter((role) => role && role._id)
                         .map((role) => (
-                          <label
+                          <div
                             key={role._id}
                             className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/50 px-2 rounded"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              toggleRole(role._id);
+                            }}
                           >
                             <input
                               type="checkbox"
                               checked={newUser.role_ids.includes(role._id)}
                               onChange={() => toggleRole(role._id)}
-                              className="rounded"
+                              className="rounded pointer-events-none"
+                              onClick={(e) => e.stopPropagation()}
                             />
                             <span className="text-xs sm:text-sm flex-1 flex items-center gap-2">
                               <span className="font-medium">{role.title}</span>
@@ -426,7 +360,7 @@ export default function UsersPage() {
                                 {role.description}
                               </span>
                             )}
-                          </label>
+                          </div>
                         ))}
                     </div>
                   )}
@@ -466,101 +400,6 @@ export default function UsersPage() {
                   }
                 >
                   {loading ? "Creating..." : "Create User"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <ShieldCheck className="mr-2 h-4 w-4" />
-                Assign Role to User
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Assign Role to User</DialogTitle>
-                <DialogDescription>
-                  Select a user and role to assign
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="flex flex-col gap-4 mt-4">
-                <div>
-                  <Label htmlFor="select-user" className="text-sm sm:text-base">
-                    Select User *
-                  </Label>
-                  <Select onValueChange={setSelectedUser} value={selectedUser}>
-                    <SelectTrigger id="select-user">
-                      <SelectValue placeholder="Select User" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.length === 0 ? (
-                        <div className="px-2 py-1 text-sm text-muted-foreground">
-                          No users available
-                        </div>
-                      ) : (
-                        users
-                          .filter((user) => user && user._id)
-                          .map((user) => (
-                            <SelectItem key={user._id} value={user._id}>
-                              {user.name} ({user.email})
-                              {user.is_system && " [System]"}
-                            </SelectItem>
-                          ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="select-role" className="text-sm sm:text-base">
-                    Select Role *
-                  </Label>
-                  <Select onValueChange={setSelectedRole} value={selectedRole}>
-                    <SelectTrigger id="select-role">
-                      <SelectValue placeholder="Select Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.length === 0 ? (
-                        <div className="px-2 py-1 text-sm text-muted-foreground">
-                          No roles available
-                        </div>
-                      ) : (
-                        roles
-                          .filter((role) => role && role._id)
-                          .map((role) => (
-                            <SelectItem key={role._id} value={role._id}>
-                              {role.title}
-                              {role.is_system && " [System]"}
-                            </SelectItem>
-                          ))
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <DialogFooter className="flex-col sm:flex-row gap-2">
-                <Button
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={() => {
-                    setAssignDialogOpen(false);
-                    setSelectedUser("");
-                    setSelectedRole("");
-                  }}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="w-full sm:w-auto"
-                  onClick={handleAssignRole}
-                  disabled={!selectedUser || !selectedRole || loading}
-                >
-                  {loading ? "Assigning..." : "Assign Role"}
                 </Button>
               </DialogFooter>
             </DialogContent>

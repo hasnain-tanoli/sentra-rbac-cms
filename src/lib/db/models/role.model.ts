@@ -17,13 +17,16 @@ const RoleSchema = new Schema<IRole>({
   },
   key: {
     type: String,
-    required: false,
+    required: true,
     unique: true,
     lowercase: true,
     index: true,
-    match: /^[a-z_]+$/
+    match: /^[a-z0-9_]+$/
   },
-  description: String,
+  description: {
+    type: String,
+    default: ""
+  },
   is_system: {
     type: Boolean,
     default: false,
@@ -37,7 +40,7 @@ RoleSchema.pre('save', async function (next) {
   if (!this.key || this.isModified('title')) {
     const keyify = (str: string) => str
       .toLowerCase()
-      .replace(/[^a-z]+/g, '_')
+      .replace(/[^a-z0-9]+/g, '_')
       .replace(/^_+|_+$/g, '');
 
     const baseKey = keyify(this.title);

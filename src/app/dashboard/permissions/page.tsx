@@ -42,8 +42,6 @@ export default function PermissionsPage() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [assignments, setAssignments] = useState<RolePermission[]>([]);
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [selectedRole, setSelectedRole] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [availableResources, setAvailableResources] = useState<string[]>([]);
   const [availableActions, setAvailableActions] = useState<string[]>([]);
@@ -61,7 +59,6 @@ export default function PermissionsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingPermission, setDeletingPermission] =
     useState<Permission | null>(null);
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -158,7 +155,7 @@ export default function PermissionsPage() {
           title: "Success",
           description: "Permission created successfully",
         });
-        await fetchPermissions();
+        await Promise.all([fetchPermissions(), fetchAssignments()]);
         setCreateDialogOpen(false);
         setNewPermission({ resource: "", action: "", description: "" });
       } else {
@@ -310,64 +307,6 @@ export default function PermissionsPage() {
     }
   };
 
-  const handleAssignPermissions = async () => {
-    if (!selectedRole || selectedPermissions.length === 0) {
-      toast({
-        title: "Validation Error",
-        description: "Please select a role and at least one permission",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const res = await fetch("/api/role-permissions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          role_id: selectedRole,
-          permission_keys: selectedPermissions,
-        }),
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        toast({
-          title: "Success",
-          description: `${data.data.assignedCount} permission(s) assigned successfully`,
-        });
-        await fetchAssignments();
-        setSelectedPermissions([]);
-        setSelectedRole("");
-        setAssignDialogOpen(false);
-      } else {
-        toast({
-          title: "Error",
-          description: data.message,
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      console.error("Error assigning permissions:", err);
-      toast({
-        title: "Error",
-        description: "Failed to assign permissions",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const togglePermission = (permKey: string) => {
-    setSelectedPermissions((prev) =>
-      prev.includes(permKey)
-        ? prev.filter((k) => k !== permKey)
-        : [...prev, permKey]
-    );
-  };
-
   const getAssignedRoles = (permissionId: string) => {
     return assignments
       .filter(
@@ -499,120 +438,6 @@ export default function PermissionsPage() {
                   }
                 >
                   {loading ? "Creating..." : "Create Permission"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Shield className="mr-2 h-4 w-4" />
-                Assign Permissions to Role
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-[90vw] sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Assign Permissions to Role</DialogTitle>
-                <DialogDescription>
-                  Select a role and permissions to assign
-                </DialogDescription>
-              </DialogHeader>
-
-              <div className="flex flex-col gap-4 mt-4">
-                <div>
-                  <Label htmlFor="select-role" className="text-sm sm:text-base">
-                    Select Role *
-                  </Label>
-                  <Select onValueChange={setSelectedRole} value={selectedRole}>
-                    <SelectTrigger id="select-role">
-                      <SelectValue placeholder="Select Role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles
-                        .filter((role) => role && role._id)
-                        .map((role) => (
-                          <SelectItem key={role._id} value={role._id}>
-                            {role.title}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="border rounded-md p-4 max-h-64 overflow-y-auto">
-                  <p className="text-xs sm:text-sm font-medium mb-3">
-                    Select Permissions ({selectedPermissions.length} selected):
-                  </p>
-                  {permissions.length === 0 ? (
-                    <p className="text-xs sm:text-sm text-muted-foreground text-center py-4">
-                      No permissions available. Create permissions first.
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {permissions
-                        .filter((perm) => perm && perm._id && perm.key)
-                        .map((perm) => (
-                          <label
-                            key={perm._id}
-                            className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/50 px-2 rounded"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedPermissions.includes(perm.key)}
-                              onChange={() => togglePermission(perm.key)}
-                              className="rounded"
-                            />
-                            <span className="text-xs sm:text-sm flex-1">
-                              <span className="font-medium capitalize">
-                                {perm.resource}
-                              </span>{" "}
-                              <span className="text-muted-foreground">→</span>{" "}
-                              <span className="text-primary capitalize">
-                                {perm.action}
-                              </span>
-                            </span>
-                            {perm.is_system && (
-                              <Badge variant="secondary" className="text-xs">
-                                <Lock className="h-3 w-3 mr-1" />
-                                System
-                              </Badge>
-                            )}
-                            {perm.description && (
-                              <span className="text-xs text-muted-foreground hidden sm:inline">
-                                {perm.description}
-                              </span>
-                            )}
-                          </label>
-                        ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <DialogFooter className="flex-col sm:flex-row gap-2">
-                <Button
-                  variant="outline"
-                  className="w-full sm:w-auto"
-                  onClick={() => {
-                    setAssignDialogOpen(false);
-                    setSelectedPermissions([]);
-                    setSelectedRole("");
-                  }}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className="w-full sm:w-auto"
-                  onClick={handleAssignPermissions}
-                  disabled={
-                    !selectedRole || selectedPermissions.length === 0 || loading
-                  }
-                >
-                  {loading
-                    ? "Assigning..."
-                    : `Assign ${selectedPermissions.length} Permission(s)`}
                 </Button>
               </DialogFooter>
             </DialogContent>

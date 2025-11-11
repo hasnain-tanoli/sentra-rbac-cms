@@ -5,6 +5,8 @@ import { connectDB } from "@/lib/db/connection";
 import { User } from "@/lib/db/models/user.model";
 import { UserRole } from "@/lib/db/models/userRole.model";
 import { Role } from "@/lib/db/models/role.model";
+import { Permission } from "@/lib/db/models/permission.model";
+import { RolePermission } from "@/lib/db/models/rolePermission.model";
 import { hasPermission } from "@/lib/rbac/checkPermission";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
@@ -280,16 +282,41 @@ export async function POST(req: Request) {
                     console.log(`✅ Assigned ${validRoleIds.length} role(s) to ${newUser.email}`);
                 }
             } else {
-                const defaultRole = await Role.findOne({ key: "author" });
-                if (defaultRole) {
-                    await UserRole.create({
-                        user_id: newUser._id,
-                        role_id: defaultRole._id,
+                let defaultRole = await Role.findOne({ key: "user" });
+
+                if (!defaultRole) {
+                    console.log("⚠️ 'User' role not found. Creating it with 'posts.read' permission...");
+
+                    defaultRole = await Role.create({
+                        title: "User",
+                        key: "user",
+                        description: "Default user role with read-only access to posts",
+                        is_system: false,
                     });
-                    console.log(`✅ Assigned default role "${defaultRole.title}" to ${newUser.email}`);
-                } else {
-                    console.warn("⚠️ No default 'author' role found. User created without roles.");
+
+                    console.log(`✅ Created 'User' role with key: ${defaultRole.key}`);
+
+                    const postsReadPermission = await Permission.findOne({
+                        resource: "posts",
+                        action: "read"
+                    });
+
+                    if (postsReadPermission) {
+                        await RolePermission.create({
+                            role_id: defaultRole._id,
+                            permission_id: postsReadPermission._id,
+                        });
+                        console.log(`✅ Assigned 'posts.read' permission to 'User' role`);
+                    } else {
+                        console.warn("⚠️ 'posts.read' permission not found. Creating User role without permissions.");
+                    }
                 }
+
+                await UserRole.create({
+                    user_id: newUser._id,
+                    role_id: defaultRole._id,
+                });
+                console.log(`✅ Assigned default role "${defaultRole.title}" to ${newUser.email}`);
             }
         }
 

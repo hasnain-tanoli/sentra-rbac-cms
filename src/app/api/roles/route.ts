@@ -38,27 +38,29 @@ export async function POST(req: Request) {
     await connectDB();
 
     const body = await req.json();
-    const { title, key, description } = body;
+    const { title, description } = body;
 
     if (!title || typeof title !== "string" || title.trim().length < 2) {
-      return respond(false, "A valid role title is required.", 400);
+      return respond(false, "A valid role title is required (minimum 2 characters).", 400);
     }
+
+    const key = title.trim().toLowerCase().replace(/\s+/g, '_');
 
     const existingRole = await Role.findOne({
       $or: [
         { title: title.trim() },
-        ...(key ? [{ key: key.trim().toLowerCase() }] : [])
+        { key: key }
       ]
     });
 
     if (existingRole) {
-      return respond(false, "A role with this title or key already exists.", 409);
+      return respond(false, "A role with this title already exists.", 409);
     }
 
     const role = await Role.create({
       title: title.trim(),
-      key: key?.trim().toLowerCase(),
-      description,
+      key: key,
+      description: description?.trim() || "",
       is_system: false,
     });
 

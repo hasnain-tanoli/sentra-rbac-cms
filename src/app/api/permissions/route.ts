@@ -82,14 +82,13 @@ export async function POST(req: Request) {
                 is_system: isSystemPermission,
             }], { session });
 
-            if (isSystemPermission) {
-                await RolePermission.create([{
-                    role_id: superAdminRole._id,
-                    permission_id: permission._id
-                }], { session });
+            // Always assign ALL new permissions to super_admin role
+            await RolePermission.create([{
+                role_id: superAdminRole._id,
+                permission_id: permission._id
+            }], { session });
 
-                console.info(`[Transaction] Auto-assigned system permission '${key}' to 'super_admin' role.`);
-            }
+            console.info(`✅ [Transaction] Auto-assigned permission '${key}' to 'super_admin' role.`);
 
             await session.commitTransaction();
 
