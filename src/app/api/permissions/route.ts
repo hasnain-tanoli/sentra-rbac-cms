@@ -82,7 +82,6 @@ export async function POST(req: Request) {
                 is_system: isSystemPermission,
             }], { session });
 
-            // Always assign ALL new permissions to super_admin role
             await RolePermission.create([{
                 role_id: superAdminRole._id,
                 permission_id: permission._id

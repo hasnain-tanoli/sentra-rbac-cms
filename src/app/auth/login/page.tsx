@@ -1,4 +1,3 @@
-// app/auth/login/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -28,13 +27,11 @@ export default function LoginPage() {
     password: "",
   });
 
-  // Remove callback URL from URL if present
   useEffect(() => {
     const callbackUrl = searchParams.get("callbackUrl");
     const error = searchParams.get("error");
 
     if (callbackUrl || error) {
-      // Replace URL without callback parameter
       window.history.replaceState({}, "", "/auth/login");
     }
   }, [searchParams]);
@@ -45,7 +42,6 @@ export default function LoginPage() {
       ...prev,
       [name]: value,
     }));
-    // Clear error when user starts typing
     if (error) setError("");
   };
 
@@ -58,14 +54,13 @@ export default function LoginPage() {
       const result = await signIn("credentials", {
         email: formData.email,
         password: formData.password,
-        redirect: false, // Handle redirect manually
+        redirect: false,
       });
 
       if (result?.error) {
         setError("Invalid email or password");
         setIsLoading(false);
       } else if (result?.ok) {
-        // Use replace to avoid adding to history
         window.location.replace("/dashboard");
       }
     } catch (error) {
