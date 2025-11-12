@@ -94,7 +94,7 @@ export default async function HomePage() {
               <h3 className="text-xl font-semibold mb-2">No Posts Yet</h3>
               <p className="text-muted-foreground max-w-md mx-auto">
                 There are currently no published posts to display. Check back
-                soon for updates!
+                soon for the updates!
               </p>
             </div>
           </div>
