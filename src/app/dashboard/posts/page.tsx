@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { useSession } from "next-auth/react";
+import useSWR, { mutate } from "swr";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,18 +56,250 @@ interface DeleteResponse {
   message: string;
 }
 
+const StatusBadge = memo(({ status }: { status: string }) => (
+  <span
+    className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${
+      status === "published"
+        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+    }`}
+  >
+    {status}
+  </span>
+));
+StatusBadge.displayName = "StatusBadge";
+
+const PostTableRow = memo(
+  ({
+    post,
+    currentUserId,
+    canUpdatePosts,
+    canDeleteAnyPost,
+    onDelete,
+  }: {
+    post: Post;
+    currentUserId: string | null;
+    canUpdatePosts: boolean;
+    canDeleteAnyPost: boolean;
+    onDelete: (slug: string) => void;
+  }) => {
+    const isAuthor = currentUserId && post.author_id?._id === currentUserId;
+    const canEditThis = canUpdatePosts || !!isAuthor;
+    const canDeleteThis = canDeleteAnyPost || !!isAuthor;
+
+    const created =
+      post.createdAt || post.created_at
+        ? new Date(post.createdAt ?? post.created_at!).toLocaleDateString()
+        : "—";
+
+    return (
+      <tr className="hover:bg-muted/30 transition-colors">
+        <td className="border-b px-4 py-3 font-medium">{post.title}</td>
+        <td className="border-b px-4 py-3 text-sm text-muted-foreground">
+          {post.author_id?.name || "Unknown"}
+        </td>
+        <td className="border-b px-4 py-3">
+          <StatusBadge status={post.status} />
+        </td>
+        <td className="border-b px-4 py-3 text-sm text-muted-foreground">
+          {created}
+        </td>
+        <td className="border-b px-4 py-3">
+          <div className="flex gap-2">
+            <Link href={`/dashboard/posts/edit/${post.slug}`}>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!canEditThis}
+                title={
+                  !canEditThis
+                    ? "You need posts.update or be the author"
+                    : "Edit post"
+                }
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={!canDeleteThis}
+              title={
+                !canDeleteThis
+                  ? "You need posts.delete or be the author"
+                  : "Delete post"
+              }
+              onClick={() => onDelete(post.slug)}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+);
+PostTableRow.displayName = "PostTableRow";
+
+const PostMobileCard = memo(
+  ({
+    post,
+    currentUserId,
+    canUpdatePosts,
+    canDeleteAnyPost,
+    onDelete,
+  }: {
+    post: Post;
+    currentUserId: string | null;
+    canUpdatePosts: boolean;
+    canDeleteAnyPost: boolean;
+    onDelete: (slug: string) => void;
+  }) => {
+    const isAuthor = currentUserId && post.author_id?._id === currentUserId;
+    const canEditThis = canUpdatePosts || !!isAuthor;
+    const canDeleteThis = canDeleteAnyPost || !!isAuthor;
+
+    const created =
+      post.createdAt || post.created_at
+        ? new Date(post.createdAt ?? post.created_at!).toLocaleDateString()
+        : "—";
+
+    return (
+      <div className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors">
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="font-semibold text-base line-clamp-2 flex-1">
+            {post.title}
+          </h3>
+          <StatusBadge status={post.status} />
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <User className="h-3.5 w-3.5" />
+            <span>{post.author_id?.name || "Unknown"}</span>
+          </div>
+          <span className="hidden sm:inline">•</span>
+          <div className="flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5" />
+            <span>{created}</span>
+          </div>
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Link href={`/dashboard/posts/edit/${post.slug}`} className="flex-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              disabled={!canEditThis}
+              title={
+                !canEditThis
+                  ? "You need posts.update or be the author"
+                  : "Edit post"
+              }
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            disabled={!canDeleteThis}
+            title={
+              !canDeleteThis
+                ? "You need posts.delete or be the author"
+                : "Delete post"
+            }
+            onClick={() => onDelete(post.slug)}
+          >
+            <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+            Delete
+          </Button>
+        </div>
+      </div>
+    );
+  }
+);
+PostMobileCard.displayName = "PostMobileCard";
+
+const EmptyState = memo(({ canCreatePosts }: { canCreatePosts: boolean }) => (
+  <div className="px-4 py-12 text-center text-muted-foreground">
+    <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
+    <p className="text-lg font-medium mb-2">No posts found</p>
+    <p className="text-sm mb-4">
+      {canCreatePosts
+        ? "Create your first post to get started"
+        : "You may not have permission to create posts"}
+    </p>
+    {canCreatePosts && (
+      <Link href="/dashboard/posts/new">
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Post
+        </Button>
+      </Link>
+    )}
+  </div>
+));
+EmptyState.displayName = "EmptyState";
+
+const StatsCard = memo(
+  ({
+    totalPosts,
+    publishedCount,
+    draftCount,
+  }: {
+    totalPosts: number;
+    publishedCount: number;
+    draftCount: number;
+  }) => (
+    <div className="grid grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
+      <div className="text-center">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+          Total Posts
+        </p>
+        <p className="text-lg sm:text-xl font-bold">{totalPosts}</p>
+      </div>
+      <div className="text-center border-x">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+          Published
+        </p>
+        <p className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
+          {publishedCount}
+        </p>
+      </div>
+      <div className="text-center">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">Drafts</p>
+        <p className="text-lg sm:text-xl font-bold text-yellow-600 dark:text-yellow-400">
+          {draftCount}
+        </p>
+      </div>
+    </div>
+  )
+);
+StatsCard.displayName = "StatsCard";
+
 export default function PostsPage() {
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
   const [deleteSlug, setDeleteSlug] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { toast } = useToast();
   const { data: session } = useSession();
-  const currentUserId = session?.user?.id ?? null;
+  const currentUserId = useMemo(
+    () => session?.user?.id ?? null,
+    [session?.user?.id]
+  );
 
   const { permissions } = usePermissions();
+
+  const { data: postsData, isLoading: postsLoading } =
+    useSWR<ApiResponse>("/api/posts");
+
+  const posts = useMemo(() => postsData?.data || [], [postsData?.data]);
+
   const perms = useMemo(
     () => (Array.isArray(permissions) ? permissions : []),
     [permissions]
@@ -80,44 +313,22 @@ export default function PostsPage() {
     [perms]
   );
 
-  const canCreatePosts = has("posts.create");
-  const canReadPosts = has("posts.read");
-  const canUpdatePosts = has("posts.update");
-  const canDeleteAnyPost = has("posts.delete");
+  const canCreatePosts = useMemo(() => has("posts.create"), [has]);
+  const canReadPosts = useMemo(() => has("posts.read"), [has]);
+  const canUpdatePosts = useMemo(() => has("posts.update"), [has]);
+  const canDeleteAnyPost = useMemo(() => has("posts.delete"), [has]);
 
-  const fetchPosts = useCallback(async () => {
-    try {
-      const res = await fetch("/api/posts", {
-        method: "GET",
-        cache: "no-store",
-      });
-      const data = (await res.json()) as ApiResponse;
-      if (res.ok && data.success && data.data) {
-        setPosts(data.data);
-      } else {
-        toast({
-          title: "Error",
-          description: data?.message || "Failed to fetch posts",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      console.error("Failed to fetch posts:", err);
-      toast({
-        title: "Error",
-        description: "Failed to fetch posts",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+  const handleOpenDeleteDialog = useCallback((slug: string) => {
+    setDeleteError(null);
+    setDeleteSlug(slug);
+  }, []);
 
-  useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+  const handleCloseDeleteDialog = useCallback(() => {
+    setDeleteSlug(null);
+    setDeleteError(null);
+  }, []);
 
-  async function handleDelete() {
+  const handleDelete = useCallback(async () => {
     if (!deleteSlug) return;
 
     setIsDeleting(true);
@@ -131,7 +342,8 @@ export default function PostsPage() {
       const data = isJson ? ((await res.json()) as DeleteResponse) : null;
 
       if (res.ok && data?.success) {
-        setPosts((prev) => prev.filter((post) => post.slug !== deleteSlug));
+        await mutate("/api/posts");
+
         toast({
           title: "Success",
           description: data.message || "Post deleted successfully",
@@ -159,16 +371,23 @@ export default function PostsPage() {
     } finally {
       setIsDeleting(false);
     }
-  }
+  }, [deleteSlug, toast]);
 
-  const targetPost = deleteSlug
-    ? posts.find((p) => p.slug === deleteSlug)
-    : undefined;
+  const targetPost = useMemo(
+    () => (deleteSlug ? posts.find((p) => p.slug === deleteSlug) : undefined),
+    [deleteSlug, posts]
+  );
 
-  const publishedCount = posts.filter((p) => p.status === "published").length;
-  const draftCount = posts.filter((p) => p.status === "draft").length;
+  const stats = useMemo(
+    () => ({
+      totalPosts: posts.length,
+      publishedCount: posts.filter((p) => p.status === "published").length,
+      draftCount: posts.filter((p) => p.status === "draft").length,
+    }),
+    [posts]
+  );
 
-  if (loading) {
+  if (postsLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-96">
@@ -239,15 +458,7 @@ export default function PostsPage() {
           </Link>
         </div>
 
-        <AlertDialog
-          open={!!deleteSlug}
-          onOpenChange={(open) => {
-            if (!open) {
-              setDeleteSlug(null);
-              setDeleteError(null);
-            }
-          }}
-        >
+        <AlertDialog open={!!deleteSlug} onOpenChange={handleCloseDeleteDialog}>
           <AlertDialogContent className="max-w-[90vw] sm:max-w-md">
             <AlertDialogHeader>
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -312,103 +523,21 @@ export default function PostsPage() {
               <tbody>
                 {posts.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-12 text-center text-muted-foreground"
-                    >
-                      <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                      <p className="text-lg font-medium mb-2">No posts found</p>
-                      <p className="text-sm mb-4">
-                        {canCreatePosts
-                          ? "Create your first post to get started"
-                          : "You may not have permission to create posts"}
-                      </p>
-                      {canCreatePosts && (
-                        <Link href="/dashboard/posts/new">
-                          <Button>
-                            <Plus className="mr-2 h-4 w-4" />
-                            Create Post
-                          </Button>
-                        </Link>
-                      )}
+                    <td colSpan={5}>
+                      <EmptyState canCreatePosts={canCreatePosts} />
                     </td>
                   </tr>
                 ) : (
-                  posts.map((post) => {
-                    const isAuthor =
-                      currentUserId && post.author_id?._id === currentUserId;
-                    const canEditThis = canUpdatePosts || !!isAuthor;
-                    const canDeleteThis = canDeleteAnyPost || !!isAuthor;
-
-                    const created =
-                      post.createdAt || post.created_at
-                        ? new Date(
-                            post.createdAt ?? post.created_at!
-                          ).toLocaleDateString()
-                        : "—";
-
-                    return (
-                      <tr
-                        key={post._id}
-                        className="hover:bg-muted/30 transition-colors"
-                      >
-                        <td className="border-b px-4 py-3 font-medium">
-                          {post.title}
-                        </td>
-                        <td className="border-b px-4 py-3 text-sm text-muted-foreground">
-                          {post.author_id?.name || "Unknown"}
-                        </td>
-                        <td className="border-b px-4 py-3">
-                          <span
-                            className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                              post.status === "published"
-                                ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                                : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                            }`}
-                          >
-                            {post.status}
-                          </span>
-                        </td>
-                        <td className="border-b px-4 py-3 text-sm text-muted-foreground">
-                          {created}
-                        </td>
-                        <td className="border-b px-4 py-3">
-                          <div className="flex gap-2">
-                            <Link href={`/dashboard/posts/edit/${post.slug}`}>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                disabled={!canEditThis}
-                                title={
-                                  !canEditThis
-                                    ? "You need posts.update or be the author"
-                                    : "Edit post"
-                                }
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            </Link>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={!canDeleteThis}
-                              title={
-                                !canDeleteThis
-                                  ? "You need posts.delete or be the author"
-                                  : "Delete post"
-                              }
-                              onClick={() => {
-                                setDeleteError(null);
-                                setDeleteSlug(post.slug);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  posts.map((post) => (
+                    <PostTableRow
+                      key={post._id}
+                      post={post}
+                      currentUserId={currentUserId}
+                      canUpdatePosts={canUpdatePosts}
+                      canDeleteAnyPost={canDeleteAnyPost}
+                      onDelete={handleOpenDeleteDialog}
+                    />
+                  ))
                 )}
               </tbody>
             </table>
@@ -418,140 +547,28 @@ export default function PostsPage() {
         <div className="md:hidden space-y-4">
           {posts.length === 0 ? (
             <div className="rounded-md border">
-              <div className="px-4 py-12 text-center text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p className="text-lg font-medium mb-2">No posts found</p>
-                <p className="text-sm mb-4">
-                  {canCreatePosts
-                    ? "Create your first post to get started"
-                    : "You may not have permission to create posts"}
-                </p>
-                {canCreatePosts && (
-                  <Link href="/dashboard/posts/new">
-                    <Button className="w-full sm:w-auto">
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create Post
-                    </Button>
-                  </Link>
-                )}
-              </div>
+              <EmptyState canCreatePosts={canCreatePosts} />
             </div>
           ) : (
-            posts.map((post) => {
-              const isAuthor =
-                currentUserId && post.author_id?._id === currentUserId;
-              const canEditThis = canUpdatePosts || !!isAuthor;
-              const canDeleteThis = canDeleteAnyPost || !!isAuthor;
-
-              const created =
-                post.createdAt || post.created_at
-                  ? new Date(
-                      post.createdAt ?? post.created_at!
-                    ).toLocaleDateString()
-                  : "—";
-
-              return (
-                <div
-                  key={post._id}
-                  className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-semibold text-base line-clamp-2 flex-1">
-                      {post.title}
-                    </h3>
-                    <span
-                      className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium whitespace-nowrap ${
-                        post.status === "published"
-                          ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
-                          : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                      }`}
-                    >
-                      {post.status}
-                    </span>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <User className="h-3.5 w-3.5" />
-                      <span>{post.author_id?.name || "Unknown"}</span>
-                    </div>
-                    <span className="hidden sm:inline">•</span>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span>{created}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2 pt-2">
-                    <Link
-                      href={`/dashboard/posts/edit/${post.slug}`}
-                      className="flex-1"
-                    >
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
-                        disabled={!canEditThis}
-                        title={
-                          !canEditThis
-                            ? "You need posts.update or be the author"
-                            : "Edit post"
-                        }
-                      >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      disabled={!canDeleteThis}
-                      title={
-                        !canDeleteThis
-                          ? "You need posts.delete or be the author"
-                          : "Delete post"
-                      }
-                      onClick={() => {
-                        setDeleteError(null);
-                        setDeleteSlug(post.slug);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2 text-destructive" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-              );
-            })
+            posts.map((post) => (
+              <PostMobileCard
+                key={post._id}
+                post={post}
+                currentUserId={currentUserId}
+                canUpdatePosts={canUpdatePosts}
+                canDeleteAnyPost={canDeleteAnyPost}
+                onDelete={handleOpenDeleteDialog}
+              />
+            ))
           )}
         </div>
 
         {posts.length > 0 && (
-          <div className="grid grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
-            <div className="text-center">
-              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Total Posts
-              </p>
-              <p className="text-lg sm:text-xl font-bold">{posts.length}</p>
-            </div>
-            <div className="text-center border-x">
-              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Published
-              </p>
-              <p className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">
-                {publishedCount}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Drafts
-              </p>
-              <p className="text-lg sm:text-xl font-bold text-yellow-600 dark:text-yellow-400">
-                {draftCount}
-              </p>
-            </div>
-          </div>
+          <StatsCard
+            totalPosts={stats.totalPosts}
+            publishedCount={stats.publishedCount}
+            draftCount={stats.draftCount}
+          />
         )}
       </div>
     </DashboardLayout>

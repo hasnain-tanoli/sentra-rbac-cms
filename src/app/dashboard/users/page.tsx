@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
+import useSWR, { mutate } from "swr";
 import { User } from "@/types/user";
 import { Role } from "@/types/role";
+import { Permission } from "@/types/permission";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -35,20 +37,368 @@ import {
   ShieldCheck,
   Lock,
   Mail,
+  Loader2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
+interface ApiResponse<T = unknown> {
+  success: boolean;
+  message: string;
+  data?: T;
+}
+
+interface UserFormData {
+  name: string;
+  email: string;
+  password: string;
+  role_ids: string[];
+}
+
+const SystemBadge = memo(() => (
+  <Badge variant="secondary" className="text-xs">
+    <Lock className="h-3 w-3 mr-1" />
+    System
+  </Badge>
+));
+SystemBadge.displayName = "SystemBadge";
+
+const RoleBadge = memo(({ role }: { role: Role }) => (
+  <Badge variant="default" className="text-xs flex items-center gap-1">
+    {role.title}
+    {role.is_system && <Lock className="h-2.5 w-2.5" />}
+  </Badge>
+));
+RoleBadge.displayName = "RoleBadge";
+
+const RolesBadgeList = memo(({ roles }: { roles: Role[] }) => {
+  if (roles.length === 0) {
+    return <span className="text-muted-foreground text-sm">—</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-1">
+      {roles.slice(0, 3).map((role, idx) => (
+        <RoleBadge key={idx} role={role} />
+      ))}
+      {roles.length > 3 && (
+        <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium">
+          +{roles.length - 3} more
+        </span>
+      )}
+    </div>
+  );
+});
+RolesBadgeList.displayName = "RolesBadgeList";
+
+const PermissionsBadgeList = memo(
+  ({ permissions }: { permissions: Permission[] }) => {
+    const permissionsByResource = useMemo(() => {
+      return permissions.reduce((acc, perm) => {
+        if (!acc[perm.resource]) {
+          acc[perm.resource] = new Set<string>();
+        }
+        acc[perm.resource].add(perm.action);
+        return acc;
+      }, {} as Record<string, Set<string>>);
+    }, [permissions]);
+
+    if (Object.keys(permissionsByResource).length === 0) {
+      return <span className="text-muted-foreground text-sm">—</span>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-1">
+        {Object.entries(permissionsByResource)
+          .slice(0, 2)
+          .map(([resource, actionsSet]) => (
+            <span
+              key={resource}
+              className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
+            >
+              {resource} ({actionsSet.size})
+            </span>
+          ))}
+        {Object.keys(permissionsByResource).length > 2 && (
+          <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium">
+            +{Object.keys(permissionsByResource).length - 2} more
+          </span>
+        )}
+      </div>
+    );
+  }
+);
+PermissionsBadgeList.displayName = "PermissionsBadgeList";
+
+const UserTableRow = memo(
+  ({
+    user,
+    roles,
+    permissions,
+    onEdit,
+    onDelete,
+  }: {
+    user: User;
+    roles: Role[];
+    permissions: Permission[];
+    onEdit: (userId: string) => void;
+    onDelete: (user: User) => void;
+  }) => {
+    return (
+      <tr className="hover:bg-muted/30 transition-colors">
+        <td className="border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{user.name}</span>
+            {user.is_system && <SystemBadge />}
+          </div>
+        </td>
+        <td className="border-b px-4 py-3">
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Mail className="h-3.5 w-3.5" />
+            {user.email}
+          </div>
+        </td>
+        <td className="border-b px-4 py-3">
+          <RolesBadgeList roles={roles} />
+        </td>
+        <td className="border-b px-4 py-3">
+          <PermissionsBadgeList permissions={permissions} />
+        </td>
+        <td className="border-b px-4 py-3">
+          <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onEdit(user._id)}
+              title="Edit user"
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onDelete(user)}
+              disabled={user.is_system}
+              title={
+                user.is_system
+                  ? "System users cannot be deleted"
+                  : "Delete user"
+              }
+            >
+              <Trash2
+                className={`h-4 w-4 ${
+                  user.is_system ? "text-muted-foreground" : "text-destructive"
+                }`}
+              />
+            </Button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+);
+UserTableRow.displayName = "UserTableRow";
+
+const UserMobileCard = memo(
+  ({
+    user,
+    roles,
+    permissions,
+    onEdit,
+    onDelete,
+  }: {
+    user: User;
+    roles: Role[];
+    permissions: Permission[];
+    onEdit: (userId: string) => void;
+    onDelete: (user: User) => void;
+  }) => {
+    const permissionsByResource = useMemo(() => {
+      return permissions.reduce((acc, perm) => {
+        if (!acc[perm.resource]) {
+          acc[perm.resource] = new Set<string>();
+        }
+        acc[perm.resource].add(perm.action);
+        return acc;
+      }, {} as Record<string, Set<string>>);
+    }, [permissions]);
+
+    return (
+      <div className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors">
+        <div>
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
+            <h3 className="font-semibold text-base">{user.name}</h3>
+            {user.is_system && <SystemBadge />}
+          </div>
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+            <Mail className="h-3.5 w-3.5" />
+            <span>{user.email}</span>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Roles
+          </p>
+          {roles.length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {roles.map((role, idx) => (
+                <RoleBadge key={idx} role={role} />
+              ))}
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              No roles assigned
+            </span>
+          )}
+        </div>
+
+        <div>
+          <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+            <Lock className="h-3.5 w-3.5" />
+            Permissions
+          </p>
+          {Object.keys(permissionsByResource).length > 0 ? (
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(permissionsByResource).map(
+                ([resource, actionsSet]) => (
+                  <span
+                    key={resource}
+                    className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
+                  >
+                    {resource} ({actionsSet.size})
+                  </span>
+                )
+              )}
+            </div>
+          ) : (
+            <span className="text-sm text-muted-foreground">
+              No permissions
+            </span>
+          )}
+        </div>
+
+        <div className="flex gap-2 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onEdit(user._id)}
+          >
+            <Pencil className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={() => onDelete(user)}
+            disabled={user.is_system}
+          >
+            <Trash2
+              className={`h-4 w-4 mr-2 ${
+                user.is_system ? "text-muted-foreground" : "text-destructive"
+              }`}
+            />
+            {user.is_system ? "Protected" : "Delete"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+);
+UserMobileCard.displayName = "UserMobileCard";
+
+const RoleCheckboxItem = memo(
+  ({
+    role,
+    isSelected,
+    onToggle,
+  }: {
+    role: Role;
+    isSelected: boolean;
+    onToggle: () => void;
+  }) => (
+    <div
+      className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/50 px-2 rounded"
+      onClick={(e) => {
+        e.preventDefault();
+        onToggle();
+      }}
+    >
+      <input
+        type="checkbox"
+        checked={isSelected}
+        onChange={onToggle}
+        className="rounded pointer-events-none"
+        onClick={(e) => e.stopPropagation()}
+      />
+      <span className="text-xs sm:text-sm flex-1 flex items-center gap-2">
+        <span className="font-medium">{role.title}</span>
+        {role.is_system && <SystemBadge />}
+      </span>
+      {role.description && (
+        <span className="text-xs text-muted-foreground hidden sm:inline">
+          {role.description}
+        </span>
+      )}
+    </div>
+  )
+);
+RoleCheckboxItem.displayName = "RoleCheckboxItem";
+
+const EmptyState = memo(() => (
+  <div className="px-4 py-12 text-center text-muted-foreground">
+    <UsersIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
+    <p className="text-lg font-medium mb-2">No users found</p>
+    <p className="text-sm">Create your first user to get started</p>
+  </div>
+));
+EmptyState.displayName = "EmptyState";
+
+const StatsCard = memo(
+  ({
+    totalUsers,
+    systemUsers,
+    totalRoles,
+  }: {
+    totalUsers: number;
+    systemUsers: number;
+    totalRoles: number;
+  }) => (
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
+      <div className="text-center">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+          Total Users
+        </p>
+        <p className="text-lg sm:text-xl font-bold">{totalUsers}</p>
+      </div>
+      <div className="text-center sm:border-x">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+          System Users
+        </p>
+        <p className="text-lg sm:text-xl font-bold">{systemUsers}</p>
+      </div>
+      <div className="text-center">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">
+          Total Roles
+        </p>
+        <p className="text-lg sm:text-xl font-bold">{totalRoles}</p>
+      </div>
+    </div>
+  )
+);
+StatsCard.displayName = "StatsCard";
+
 export default function UsersPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [newUser, setNewUser] = useState({
+  const [newUser, setNewUser] = useState<UserFormData>({
     name: "",
     email: "",
     password: "",
-    role_ids: [] as string[],
+    role_ids: [],
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
@@ -56,50 +406,56 @@ export default function UsersPage() {
   const { toast } = useToast();
   const router = useRouter();
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      const res = await fetch("/api/users");
-      const data = await res.json();
-      if (data.success) {
-        setUsers(data.data || []);
-      } else {
-        toast({
-          title: "Error",
-          description: data.message || "Failed to fetch users",
-          variant: "destructive",
-        });
-      }
-    } catch (err) {
-      console.error("Error fetching users:", err);
-      toast({
-        title: "Error",
-        description: "Failed to fetch users",
-        variant: "destructive",
-      });
-    }
-  }, [toast]);
+  const { data: usersData, isLoading: usersLoading } =
+    useSWR<ApiResponse<User[]>>("/api/users");
 
-  const fetchRoles = useCallback(async () => {
-    try {
-      const res = await fetch("/api/roles");
-      const data = await res.json();
-      if (data.success) {
-        setRoles(data.data || []);
-      }
-    } catch (err) {
-      console.error("Error fetching roles:", err);
-    }
+  const { data: rolesData } = useSWR<ApiResponse<Role[]>>("/api/roles");
+
+  const users = useMemo(() => usersData?.data || [], [usersData?.data]);
+
+  const roles = useMemo(() => rolesData?.data || [], [rolesData?.data]);
+
+  const validUsers = useMemo(
+    () => users.filter((user) => user && user._id),
+    [users]
+  );
+
+  const usersWithData = useMemo(() => {
+    return validUsers.map((user) => ({
+      user,
+      roles: user.roles || [],
+      permissions: user.permissions || [],
+    }));
+  }, [validUsers]);
+
+  const stats = useMemo(
+    () => ({
+      totalUsers: users.length,
+      systemUsers: users.filter((u) => u.is_system).length,
+      totalRoles: roles.length,
+    }),
+    [users, roles.length]
+  );
+
+  const toggleRole = useCallback((roleId: string) => {
+    setNewUser((prev) => ({
+      ...prev,
+      role_ids: prev.role_ids.includes(roleId)
+        ? prev.role_ids.filter((id) => id !== roleId)
+        : [...prev.role_ids, roleId],
+    }));
   }, []);
 
-  useEffect(() => {
-    async function loadData() {
-      await fetchUsers();
-      await fetchRoles();
-    }
-    loadData();
-  }, [fetchUsers, fetchRoles]);
+  const resetCreateForm = useCallback(() => {
+    setNewUser({
+      name: "",
+      email: "",
+      password: "",
+      role_ids: [],
+    });
+  }, []);
 
-  const handleCreateUser = async () => {
+  const handleCreateUser = useCallback(async () => {
     if (
       !newUser.name.trim() ||
       !newUser.email.trim() ||
@@ -125,7 +481,7 @@ export default function UsersPage() {
           role_ids: newUser.role_ids.length > 0 ? newUser.role_ids : undefined,
         }),
       });
-      const data = await res.json();
+      const data: ApiResponse<User> = await res.json();
 
       if (data.success) {
         toast({
@@ -136,9 +492,11 @@ export default function UsersPage() {
               : ""
           }!`,
         });
-        await fetchUsers();
+
+        await mutate("/api/users");
+
         setCreateDialogOpen(false);
-        setNewUser({ name: "", email: "", password: "", role_ids: [] });
+        resetCreateForm();
       } else {
         toast({
           title: "Error",
@@ -156,33 +514,43 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [newUser, toast, resetCreateForm]);
 
-  const openDeleteDialog = (user: User) => {
-    if (!user?._id) {
-      toast({
-        title: "Error",
-        description: "Invalid user selected",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleEdit = useCallback(
+    (userId: string) => {
+      router.push(`/dashboard/users/edit/${userId}`);
+    },
+    [router]
+  );
 
-    if (user.is_system) {
-      toast({
-        title: "Cannot Delete",
-        description:
-          "System users cannot be deleted as they are required for core functionality.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const openDeleteDialog = useCallback(
+    (user: User) => {
+      if (!user?._id) {
+        toast({
+          title: "Error",
+          description: "Invalid user selected",
+          variant: "destructive",
+        });
+        return;
+      }
 
-    setDeletingUser(user);
-    setDeleteDialogOpen(true);
-  };
+      if (user.is_system) {
+        toast({
+          title: "Cannot Delete",
+          description:
+            "System users cannot be deleted as they are required for core functionality.",
+          variant: "destructive",
+        });
+        return;
+      }
 
-  const handleDeleteUser = async () => {
+      setDeletingUser(user);
+      setDeleteDialogOpen(true);
+    },
+    [toast]
+  );
+
+  const handleDeleteUser = useCallback(async () => {
     if (!deletingUser?._id) {
       toast({
         title: "Error",
@@ -197,14 +565,16 @@ export default function UsersPage() {
       const res = await fetch(`/api/users?id=${deletingUser._id}`, {
         method: "DELETE",
       });
-      const data = await res.json();
+      const data: ApiResponse<null> = await res.json();
 
       if (data.success) {
         toast({
           title: "Success",
           description: data.message || "User deleted successfully",
         });
-        await fetchUsers();
+
+        await mutate("/api/users");
+
         setDeleteDialogOpen(false);
         setDeletingUser(null);
       } else {
@@ -224,21 +594,55 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [deletingUser, toast]);
 
-  const toggleRole = (roleId: string) => {
-    setNewUser((prev) => ({
-      ...prev,
-      role_ids: prev.role_ids.includes(roleId)
-        ? prev.role_ids.filter((id) => id !== roleId)
-        : [...prev.role_ids, roleId],
-    }));
-  };
+  const handleCloseCreateDialog = useCallback(() => {
+    setCreateDialogOpen(false);
+    resetCreateForm();
+  }, [resetCreateForm]);
 
-  const getAssignedRoles = (userId: string) => {
-    const user = users.find((u) => u._id === userId);
-    return user?.roles || [];
-  };
+  const handleNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setNewUser((prev) => ({ ...prev, name: e.target.value }));
+    },
+    []
+  );
+
+  const handleEmailChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setNewUser((prev) => ({ ...prev, email: e.target.value }));
+    },
+    []
+  );
+
+  const handlePasswordChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setNewUser((prev) => ({ ...prev, password: e.target.value }));
+    },
+    []
+  );
+
+  const isCreateDisabled = useMemo(() => {
+    return (
+      loading ||
+      !newUser.name.trim() ||
+      !newUser.email.trim() ||
+      !newUser.password.trim()
+    );
+  }, [loading, newUser.name, newUser.email, newUser.password]);
+
+  if (usersLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-primary" />
+            <p className="text-muted-foreground">Loading users...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -279,9 +683,8 @@ export default function UsersPage() {
                     id="user-name"
                     placeholder="Enter user's full name"
                     value={newUser.name}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, name: e.target.value })
-                    }
+                    onChange={handleNameChange}
+                    disabled={loading}
                   />
                 </div>
 
@@ -294,9 +697,8 @@ export default function UsersPage() {
                     type="email"
                     placeholder="user@example.com"
                     value={newUser.email}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, email: e.target.value })
-                    }
+                    onChange={handleEmailChange}
+                    disabled={loading}
                   />
                 </div>
 
@@ -312,9 +714,8 @@ export default function UsersPage() {
                     type="password"
                     placeholder="Enter password (min 6 characters)"
                     value={newUser.password}
-                    onChange={(e) =>
-                      setNewUser({ ...newUser, password: e.target.value })
-                    }
+                    onChange={handlePasswordChange}
+                    disabled={loading}
                   />
                 </div>
 
@@ -331,36 +732,12 @@ export default function UsersPage() {
                       {roles
                         .filter((role) => role && role._id)
                         .map((role) => (
-                          <div
+                          <RoleCheckboxItem
                             key={role._id}
-                            className="flex items-center gap-2 py-1 cursor-pointer hover:bg-muted/50 px-2 rounded"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              toggleRole(role._id);
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={newUser.role_ids.includes(role._id)}
-                              onChange={() => toggleRole(role._id)}
-                              className="rounded pointer-events-none"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <span className="text-xs sm:text-sm flex-1 flex items-center gap-2">
-                              <span className="font-medium">{role.title}</span>
-                              {role.is_system && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Lock className="h-3 w-3 mr-1" />
-                                  System
-                                </Badge>
-                              )}
-                            </span>
-                            {role.description && (
-                              <span className="text-xs text-muted-foreground hidden sm:inline">
-                                {role.description}
-                              </span>
-                            )}
-                          </div>
+                            role={role}
+                            isSelected={newUser.role_ids.includes(role._id)}
+                            onToggle={() => toggleRole(role._id)}
+                          />
                         ))}
                     </div>
                   )}
@@ -376,15 +753,7 @@ export default function UsersPage() {
                 <Button
                   variant="outline"
                   className="w-full sm:w-auto"
-                  onClick={() => {
-                    setCreateDialogOpen(false);
-                    setNewUser({
-                      name: "",
-                      email: "",
-                      password: "",
-                      role_ids: [],
-                    });
-                  }}
+                  onClick={handleCloseCreateDialog}
                   disabled={loading}
                 >
                   Cancel
@@ -392,12 +761,7 @@ export default function UsersPage() {
                 <Button
                   className="w-full sm:w-auto"
                   onClick={handleCreateUser}
-                  disabled={
-                    loading ||
-                    !newUser.name.trim() ||
-                    !newUser.email.trim() ||
-                    !newUser.password.trim()
-                  }
+                  disabled={isCreateDisabled}
                 >
                   {loading ? "Creating..." : "Create User"}
                 </Button>
@@ -464,153 +828,23 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.length === 0 ? (
+                {usersWithData.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={5}
-                      className="px-4 py-12 text-center text-muted-foreground"
-                    >
-                      <UsersIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                      <p className="text-lg font-medium mb-2">No users found</p>
-                      <p className="text-sm">
-                        Create your first user to get started
-                      </p>
+                    <td colSpan={5}>
+                      <EmptyState />
                     </td>
                   </tr>
                 ) : (
-                  users
-                    .filter((user) => user && user._id)
-                    .map((user) => {
-                      const assignedRoles = getAssignedRoles(user._id);
-                      const permissions = user.permissions || [];
-
-                      const permissionsByResource = permissions.reduce(
-                        (acc, perm) => {
-                          if (!acc[perm.resource]) {
-                            acc[perm.resource] = new Set<string>();
-                          }
-                          acc[perm.resource].add(perm.action);
-                          return acc;
-                        },
-                        {} as Record<string, Set<string>>
-                      );
-
-                      return (
-                        <tr
-                          key={user._id}
-                          className="hover:bg-muted/30 transition-colors"
-                        >
-                          <td className="border-b px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium">{user.name}</span>
-                              {user.is_system && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Lock className="h-3 w-3 mr-1" />
-                                  System
-                                </Badge>
-                              )}
-                            </div>
-                          </td>
-                          <td className="border-b px-4 py-3">
-                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                              <Mail className="h-3.5 w-3.5" />
-                              {user.email}
-                            </div>
-                          </td>
-                          <td className="border-b px-4 py-3">
-                            {assignedRoles.length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {assignedRoles.slice(0, 3).map((role, idx) => (
-                                  <Badge
-                                    key={idx}
-                                    variant="default"
-                                    className="text-xs flex items-center gap-1"
-                                  >
-                                    {role.title}
-                                    {role.is_system && (
-                                      <Lock className="h-2.5 w-2.5" />
-                                    )}
-                                  </Badge>
-                                ))}
-                                {assignedRoles.length > 3 && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium">
-                                    +{assignedRoles.length - 3} more
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">
-                                —
-                              </span>
-                            )}
-                          </td>
-                          <td className="border-b px-4 py-3">
-                            {Object.keys(permissionsByResource).length > 0 ? (
-                              <div className="flex flex-wrap gap-1">
-                                {Object.entries(permissionsByResource)
-                                  .slice(0, 2)
-                                  .map(([resource, actionsSet]) => (
-                                    <span
-                                      key={resource}
-                                      className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
-                                    >
-                                      {resource} ({actionsSet.size})
-                                    </span>
-                                  ))}
-                                {Object.keys(permissionsByResource).length >
-                                  2 && (
-                                  <span className="inline-flex items-center px-2 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium">
-                                    +
-                                    {Object.keys(permissionsByResource).length -
-                                      2}{" "}
-                                    more
-                                  </span>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">
-                                —
-                              </span>
-                            )}
-                          </td>
-                          <td className="border-b px-4 py-3">
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  router.push(
-                                    `/dashboard/users/edit/${user._id}`
-                                  )
-                                }
-                                title="Edit user"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openDeleteDialog(user)}
-                                disabled={user.is_system}
-                                title={
-                                  user.is_system
-                                    ? "System users cannot be deleted"
-                                    : "Delete user"
-                                }
-                              >
-                                <Trash2
-                                  className={`h-4 w-4 ${
-                                    user.is_system
-                                      ? "text-muted-foreground"
-                                      : "text-destructive"
-                                  }`}
-                                />
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
+                  usersWithData.map(({ user, roles, permissions }) => (
+                    <UserTableRow
+                      key={user._id}
+                      user={user}
+                      roles={roles}
+                      permissions={permissions}
+                      onEdit={handleEdit}
+                      onDelete={openDeleteDialog}
+                    />
+                  ))
                 )}
               </tbody>
             </table>
@@ -618,163 +852,30 @@ export default function UsersPage() {
         </div>
 
         <div className="md:hidden space-y-4">
-          {users.length === 0 ? (
+          {usersWithData.length === 0 ? (
             <div className="rounded-md border">
-              <div className="px-4 py-12 text-center text-muted-foreground">
-                <UsersIcon className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <p className="text-lg font-medium mb-2">No users found</p>
-                <p className="text-sm">Create your first user to get started</p>
-              </div>
+              <EmptyState />
             </div>
           ) : (
-            users
-              .filter((user) => user && user._id)
-              .map((user) => {
-                const assignedRoles = getAssignedRoles(user._id);
-                const permissions = user.permissions || [];
-
-                const permissionsByResource = permissions.reduce(
-                  (acc, perm) => {
-                    if (!acc[perm.resource]) {
-                      acc[perm.resource] = new Set<string>();
-                    }
-                    acc[perm.resource].add(perm.action);
-                    return acc;
-                  },
-                  {} as Record<string, Set<string>>
-                );
-
-                return (
-                  <div
-                    key={user._id}
-                    className="rounded-md border p-4 space-y-3 bg-card hover:bg-muted/30 transition-colors"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <h3 className="font-semibold text-base">{user.name}</h3>
-                        {user.is_system && (
-                          <Badge variant="secondary" className="text-xs">
-                            <Lock className="h-3 w-3 mr-1" />
-                            System
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                        <Mail className="h-3.5 w-3.5" />
-                        <span>{user.email}</span>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                        <ShieldCheck className="h-3.5 w-3.5" />
-                        Roles
-                      </p>
-                      {assignedRoles.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {assignedRoles.map((role, idx) => (
-                            <Badge
-                              key={idx}
-                              variant="default"
-                              className="text-xs flex items-center gap-1"
-                            >
-                              {role.title}
-                              {role.is_system && (
-                                <Lock className="h-2.5 w-2.5" />
-                              )}
-                            </Badge>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          No roles assigned
-                        </span>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
-                        <Lock className="h-3.5 w-3.5" />
-                        Permissions
-                      </p>
-                      {Object.keys(permissionsByResource).length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {Object.entries(permissionsByResource).map(
-                            ([resource, actionsSet]) => (
-                              <span
-                                key={resource}
-                                className="inline-flex items-center px-2 py-1 rounded-md bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 text-xs font-medium"
-                              >
-                                {resource} ({actionsSet.size})
-                              </span>
-                            )
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-sm text-muted-foreground">
-                          No permissions
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex gap-2 pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() =>
-                          router.push(`/dashboard/users/edit/${user._id}`)
-                        }
-                      >
-                        <Pencil className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1"
-                        onClick={() => openDeleteDialog(user)}
-                        disabled={user.is_system}
-                      >
-                        <Trash2
-                          className={`h-4 w-4 mr-2 ${
-                            user.is_system
-                              ? "text-muted-foreground"
-                              : "text-destructive"
-                          }`}
-                        />
-                        {user.is_system ? "Protected" : "Delete"}
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })
+            usersWithData.map(({ user, roles, permissions }) => (
+              <UserMobileCard
+                key={user._id}
+                user={user}
+                roles={roles}
+                permissions={permissions}
+                onEdit={handleEdit}
+                onDelete={openDeleteDialog}
+              />
+            ))
           )}
         </div>
 
         {users.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30">
-            <div className="text-center">
-              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Total Users
-              </p>
-              <p className="text-lg sm:text-xl font-bold">{users.length}</p>
-            </div>
-            <div className="text-center sm:border-x">
-              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-                System Users
-              </p>
-              <p className="text-lg sm:text-xl font-bold">
-                {users.filter((u) => u.is_system).length}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Total Roles
-              </p>
-              <p className="text-lg sm:text-xl font-bold">{roles.length}</p>
-            </div>
-          </div>
+          <StatsCard
+            totalUsers={stats.totalUsers}
+            systemUsers={stats.systemUsers}
+            totalRoles={stats.totalRoles}
+          />
         )}
       </div>
     </DashboardLayout>

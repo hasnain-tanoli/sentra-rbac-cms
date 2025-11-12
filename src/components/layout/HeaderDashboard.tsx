@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,17 +35,138 @@ interface MenuItem {
   requireManagePermissions?: boolean;
 }
 
+const Logo = memo(({ width, height }: { width: number; height: number }) => (
+  <Image
+    src="/Logo-with-Text.svg"
+    alt="Sentra Logo"
+    width={width}
+    height={height}
+    priority
+    style={{ height: "auto" }}
+  />
+));
+Logo.displayName = "Logo";
+
+const LoadingState = memo(() => (
+  <div className="flex items-center justify-center py-8">
+    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+  </div>
+));
+LoadingState.displayName = "LoadingState";
+
+const EmptyState = memo(() => (
+  <div className="text-center py-8">
+    <p className="text-sm text-muted-foreground">No accessible pages</p>
+  </div>
+));
+EmptyState.displayName = "EmptyState";
+
+const MobileNavItem = memo(
+  ({
+    item,
+    isActive,
+    onClick,
+  }: {
+    item: MenuItem;
+    isActive: boolean;
+    onClick: () => void;
+  }) => {
+    const Icon = item.icon;
+
+    return (
+      <Link
+        href={item.href}
+        onClick={onClick}
+        className={`flex items-center gap-3 px-4 py-3 rounded-md font-medium transition-colors ${
+          isActive
+            ? "bg-primary text-white"
+            : "text-foreground hover:bg-primary/10"
+        }`}
+      >
+        <Icon className="h-5 w-5" />
+        {item.name}
+      </Link>
+    );
+  }
+);
+MobileNavItem.displayName = "MobileNavItem";
+
+const MobileNav = memo(
+  ({
+    items,
+    currentPath,
+    onItemClick,
+  }: {
+    items: MenuItem[];
+    currentPath: string;
+    onItemClick: () => void;
+  }) => {
+    if (items.length === 0) {
+      return <EmptyState />;
+    }
+
+    return (
+      <nav className="flex flex-col gap-2 mb-6">
+        {items.map((item) => (
+          <MobileNavItem
+            key={item.name}
+            item={item}
+            isActive={currentPath === item.href}
+            onClick={onItemClick}
+          />
+        ))}
+      </nav>
+    );
+  }
+);
+MobileNav.displayName = "MobileNav";
+
+const MobileActions = memo(
+  ({ onClose, onLogout }: { onClose: () => void; onLogout: () => void }) => (
+    <div className="border-t pt-4 mt-auto flex flex-col gap-2">
+      <Link href="/dashboard/profile" onClick={onClose}>
+        <Button variant="outline" className="w-full justify-start font-medium">
+          <User className="mr-2 h-4 w-4" />
+          Profile
+        </Button>
+      </Link>
+      <Link href="/" onClick={onClose}>
+        <Button variant="outline" className="w-full justify-start font-medium">
+          <Home className="mr-2 h-4 w-4" />
+          Home
+        </Button>
+      </Link>
+      <Button
+        onClick={onLogout}
+        className="w-full justify-start font-medium"
+        variant="destructive"
+      >
+        Log out
+      </Button>
+    </div>
+  )
+);
+MobileActions.displayName = "MobileActions";
+
+const DesktopActions = memo(({ onLogout }: { onLogout: () => void }) => (
+  <div className="hidden md:flex items-center gap-3">
+    <Link href="/dashboard/profile">
+      <Button variant="outline" className="font-medium">
+        <User className="mr-2 h-4 w-4" />
+        Profile
+      </Button>
+    </Link>
+    <Button onClick={onLogout} className="font-medium">
+      Log out
+    </Button>
+  </div>
+));
+DesktopActions.displayName = "DesktopActions";
+
 export default function HeaderDashboard() {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const { permissions, hasPermission, loading } = usePermissions();
-
-  // Clean logout handler - replaces history to prevent back button issues
-  const handleLogout = async () => {
-    setOpen(false);
-    await signOut({ redirect: false });
-    window.location.replace("/auth/login");
-  };
 
   const menuItems: MenuItem[] = useMemo(
     () => [
@@ -97,65 +218,82 @@ export default function HeaderDashboard() {
     [hasPermission]
   );
 
-  const hasDashboardAccess = useMemo(() => {
-    const canManageUsers =
+  const canManageUsers = useMemo(
+    () =>
       hasPermission(PERMISSION_KEYS.USERS_CREATE) ||
       hasPermission(PERMISSION_KEYS.USERS_READ) ||
       hasPermission(PERMISSION_KEYS.USERS_UPDATE) ||
-      hasPermission(PERMISSION_KEYS.USERS_DELETE);
+      hasPermission(PERMISSION_KEYS.USERS_DELETE),
+    [hasPermission]
+  );
 
-    const canManageRoles =
+  const canManageRoles = useMemo(
+    () =>
       hasPermission(PERMISSION_KEYS.ROLES_CREATE) ||
       hasPermission(PERMISSION_KEYS.ROLES_READ) ||
       hasPermission(PERMISSION_KEYS.ROLES_UPDATE) ||
-      hasPermission(PERMISSION_KEYS.ROLES_DELETE);
+      hasPermission(PERMISSION_KEYS.ROLES_DELETE),
+    [hasPermission]
+  );
 
-    const canManagePermissions =
+  const canManagePermissions = useMemo(
+    () =>
       hasPermission(PERMISSION_KEYS.PERMISSIONS_CREATE) ||
       hasPermission(PERMISSION_KEYS.PERMISSIONS_READ) ||
       hasPermission(PERMISSION_KEYS.PERMISSIONS_UPDATE) ||
-      hasPermission(PERMISSION_KEYS.PERMISSIONS_DELETE);
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_DELETE),
+    [hasPermission]
+  );
 
+  const hasDashboardAccess = useMemo(() => {
     return (
       canManagePosts || canManageUsers || canManageRoles || canManagePermissions
     );
-  }, [hasPermission, canManagePosts]);
+  }, [canManagePosts, canManageUsers, canManageRoles, canManagePermissions]);
 
-  const visibleMenuItems = useMemo(
-    () =>
-      menuItems.filter((item) => {
-        if (hasOnlyPostsRead) {
-          return false;
+  const visibleMenuItems = useMemo(() => {
+    if (hasOnlyPostsRead) {
+      return [];
+    }
+
+    return menuItems.filter((item) => {
+      if (item.requireManagePermissions) {
+        if (item.name === "Posts") {
+          return canManagePosts;
         }
-
-        if (item.requireManagePermissions) {
-          if (item.name === "Posts") {
-            return canManagePosts;
-          }
-          if (item.name === "Dashboard") {
-            return hasDashboardAccess;
-          }
+        if (item.name === "Dashboard") {
+          return hasDashboardAccess;
         }
+        return false;
+      }
 
-        if (item.permission) {
-          return hasPermission(item.permission);
-        }
+      if (item.permission) {
+        return hasPermission(item.permission);
+      }
 
-        return true;
-      }),
-    [
-      menuItems,
-      hasOnlyPostsRead,
-      canManagePosts,
-      hasDashboardAccess,
-      hasPermission,
-    ]
-  );
+      return true;
+    });
+  }, [
+    menuItems,
+    hasOnlyPostsRead,
+    canManagePosts,
+    hasDashboardAccess,
+    hasPermission,
+  ]);
+
+  const handleLogout = useCallback(async () => {
+    setOpen(false);
+    await signOut({ redirect: false });
+    window.location.replace("/auth/login");
+  }, []);
+
+  const handleCloseSheet = useCallback(() => {
+    setOpen(false);
+  }, []);
 
   return (
     <header className="w-full border-b bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        {/* Mobile Menu */}
         <div className="md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
@@ -176,81 +314,27 @@ export default function HeaderDashboard() {
               </SheetHeader>
 
               <div className="mb-8 flex justify-center">
-                <Image
-                  src="/Logo-with-Text.svg"
-                  alt="Sentra Logo"
-                  width={150}
-                  height={35}
-                  priority
-                  style={{ height: "auto" }}
-                />
+                <Logo width={150} height={35} />
               </div>
 
               {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : visibleMenuItems.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted-foreground">
-                    No accessible pages
-                  </p>
-                </div>
+                <LoadingState />
               ) : (
-                <nav className="flex flex-col gap-2 mb-6">
-                  {visibleMenuItems.map((item) => {
-                    const isActive = pathname === item.href;
-                    return (
-                      <Link
-                        key={item.name}
-                        href={item.href}
-                        onClick={() => setOpen(false)}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-md font-medium transition ${
-                          isActive
-                            ? "bg-primary text-white"
-                            : "text-foreground hover:bg-primary/10"
-                        }`}
-                      >
-                        <item.icon className="h-5 w-5" />
-                        {item.name}
-                      </Link>
-                    );
-                  })}
-                </nav>
+                <MobileNav
+                  items={visibleMenuItems}
+                  currentPath={pathname}
+                  onItemClick={handleCloseSheet}
+                />
               )}
 
-              <div className="border-t pt-4 mt-auto flex flex-col gap-2">
-                <Link href="/dashboard/profile" onClick={() => setOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start font-medium"
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </Button>
-                </Link>
-                <Link href="/" onClick={() => setOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start font-medium"
-                  >
-                    <Home className="mr-2 h-4 w-4" />
-                    Home
-                  </Button>
-                </Link>
-                <Button
-                  onClick={handleLogout}
-                  className="w-full justify-start font-medium"
-                  variant="destructive"
-                >
-                  Log out
-                </Button>
-              </div>
+              <MobileActions
+                onClose={handleCloseSheet}
+                onLogout={handleLogout}
+              />
             </SheetContent>
           </Sheet>
         </div>
 
-        {/* Desktop Home Button */}
         <Link href="/" className="hidden md:block">
           <Button variant="outline" className="font-medium">
             <Home className="mr-2 h-4 w-4" />
@@ -258,32 +342,12 @@ export default function HeaderDashboard() {
           </Button>
         </Link>
 
-        {/* Mobile Logo */}
         <div className="md:hidden">
-          <Image
-            src="/Logo-with-Text.svg"
-            alt="Sentra Logo"
-            width={100}
-            height={25}
-            priority
-            style={{ height: "auto" }}
-          />
+          <Logo width={100} height={25} />
         </div>
 
-        {/* Desktop Actions */}
-        <div className="hidden md:flex items-center gap-3">
-          <Link href="/dashboard/profile">
-            <Button variant="outline" className="font-medium">
-              <User className="mr-2 h-4 w-4" />
-              Profile
-            </Button>
-          </Link>
-          <Button onClick={handleLogout} className="font-medium">
-            Log out
-          </Button>
-        </div>
+        <DesktopActions onLogout={handleLogout} />
 
-        {/* Mobile Logout Button */}
         <Button
           onClick={handleLogout}
           className="md:hidden font-medium"

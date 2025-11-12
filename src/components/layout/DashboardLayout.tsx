@@ -1,12 +1,13 @@
+import { memo } from "react";
 import HeaderDashboard from "./HeaderDashboard";
 import FooterDashboard from "./FooterDashboard";
 import Sidebar from "./Sidebar";
 
-export default function DashboardLayout({
-  children,
-}: {
+interface DashboardLayoutProps {
   children: React.ReactNode;
-}) {
+}
+
+const DashboardLayout = memo(({ children }: DashboardLayoutProps) => {
   return (
     <div className="min-h-screen flex bg-background">
       <Sidebar />
@@ -17,4 +18,8 @@ export default function DashboardLayout({
       </div>
     </div>
   );
-}
+});
+
+DashboardLayout.displayName = "DashboardLayout";
+
+export default DashboardLayout;

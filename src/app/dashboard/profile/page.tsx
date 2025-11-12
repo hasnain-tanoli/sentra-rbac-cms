@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, memo } from "react";
 import { useSession } from "next-auth/react";
+import useSWR from "swr";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import {
   Card,
@@ -43,78 +44,215 @@ interface ApiResponse<T = unknown> {
   data?: T;
 }
 
-function errorMessage(err: unknown, fallback = "Unexpected error"): string {
-  return err instanceof Error ? err.message : fallback;
-}
+const PersonalInfoCard = memo(
+  ({ name, email }: { name: string; email: string }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
+          Personal Information
+        </CardTitle>
+        <CardDescription>
+          Your account details and contact information
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-start gap-3">
+          <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-muted-foreground">Name</p>
+            <p className="text-lg font-medium">{name || "Not available"}</p>
+          </div>
+        </div>
+        <div className="flex items-start gap-3">
+          <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-muted-foreground">Email</p>
+            <p className="text-lg font-medium">{email || "Not available"}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+);
+PersonalInfoCard.displayName = "PersonalInfoCard";
 
-async function safeJson<T>(res: Response): Promise<T | null> {
-  try {
-    const ct = res.headers.get("content-type");
-    if (!ct || !ct.includes("application/json")) return null;
-    return (await res.json()) as T;
-  } catch {
-    return null;
-  }
-}
+const RoleBadge = memo(
+  ({
+    role,
+    variant,
+  }: {
+    role: Role;
+    variant: "destructive" | "secondary" | "default" | "outline";
+  }) => (
+    <Badge
+      variant={variant}
+      className="px-3 py-1.5 text-sm cursor-default"
+      title={role.description || ""}
+    >
+      {role.title}
+    </Badge>
+  )
+);
+RoleBadge.displayName = "RoleBadge";
+
+const PermissionBadge = memo(({ permission }: { permission: Permission }) => (
+  <Badge
+    variant="outline"
+    className="px-3 py-1.5 text-sm cursor-default font-mono"
+    title={permission.description || ""}
+  >
+    {permission.resource}.{permission.action}
+  </Badge>
+));
+PermissionBadge.displayName = "PermissionBadge";
+
+const RolesSection = memo(({ roles }: { roles: Role[] }) => {
+  const roleVariantMap = useMemo<
+    Record<string, "destructive" | "secondary" | "default" | "outline">
+  >(
+    () => ({
+      admin: "destructive",
+      manager: "secondary",
+      editor: "default",
+      moderator: "outline",
+    }),
+    []
+  );
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Shield className="h-4 w-4 text-muted-foreground" />
+        <p className="text-sm font-medium text-muted-foreground">Roles</p>
+      </div>
+      {roles && roles.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {roles.map((role) => (
+            <RoleBadge
+              key={role._id}
+              role={role}
+              variant={roleVariantMap[role.title.toLowerCase()] ?? "default"}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">No roles assigned</p>
+      )}
+    </div>
+  );
+});
+RolesSection.displayName = "RolesSection";
+
+const PermissionsSection = memo(
+  ({ permissions }: { permissions: Permission[] }) => (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Key className="h-4 w-4 text-muted-foreground" />
+        <p className="text-sm font-medium text-muted-foreground">Permissions</p>
+      </div>
+      {permissions && permissions.length > 0 ? (
+        <div className="flex flex-wrap gap-2">
+          {permissions.map((perm) => (
+            <PermissionBadge key={perm._id} permission={perm} />
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground">No permissions assigned</p>
+      )}
+    </div>
+  )
+);
+PermissionsSection.displayName = "PermissionsSection";
+
+const AccessControlCard = memo(
+  ({ roles, permissions }: { roles: Role[]; permissions: Permission[] }) => (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Shield className="h-5 w-5" />
+          Access Control
+        </CardTitle>
+        <CardDescription>Your assigned roles and permissions</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <RolesSection roles={roles} />
+        <PermissionsSection permissions={permissions} />
+      </CardContent>
+    </Card>
+  )
+);
+AccessControlCard.displayName = "AccessControlCard";
+
+const ErrorMessage = memo(({ message }: { message: string }) => (
+  <div className="rounded-md border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-900 px-3 py-2 text-sm text-red-700 dark:text-red-400">
+    {message}
+  </div>
+));
+ErrorMessage.displayName = "ErrorMessage";
+
+const LoadingState = memo(() => (
+  <div className="flex items-center justify-center py-12">
+    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+    <span className="ml-3 text-muted-foreground">Loading profile...</span>
+  </div>
+));
+LoadingState.displayName = "LoadingState";
+
+const EmptyState = memo(() => (
+  <Card>
+    <CardContent className="py-12 text-center">
+      <p className="text-muted-foreground">Unable to load profile data.</p>
+    </CardContent>
+  </Card>
+));
+EmptyState.displayName = "EmptyState";
 
 export default function ProfilePage() {
   const { data: session } = useSession();
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
   const { toast } = useToast();
 
-  const roleVariantMap: Record<
-    string,
-    "destructive" | "secondary" | "default" | "outline"
-  > = {
-    admin: "destructive",
-    manager: "secondary",
-    editor: "default",
-    moderator: "outline",
-  };
+  const userEmail = useMemo(() => session?.user?.email, [session?.user?.email]);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!session?.user?.email) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        setFetchError(null);
-
-        const response = await fetch(`/api/users?email=${session.user.email}`);
-        const data = await safeJson<ApiResponse<UserData>>(response);
-
-        if (response.ok && data?.success && data.data) {
-          setUserData(data.data);
-        } else {
-          const msg = data?.message || "Failed to fetch user data";
-          setFetchError(msg);
-          toast({
-            title: "Error",
-            description: msg,
-            variant: "destructive",
-          });
-        }
-      } catch (err: unknown) {
-        const msg = errorMessage(err, "Network error loading profile");
-        setFetchError(msg);
+  const {
+    data: userData,
+    error: fetchError,
+    isLoading,
+  } = useSWR<ApiResponse<UserData>>(
+    userEmail ? `/api/users?email=${userEmail}` : null,
+    {
+      onError: (err) => {
+        const message =
+          err instanceof Error ? err.message : "Network error loading profile";
         toast({
           title: "Error",
-          description: msg,
+          description: message,
           variant: "destructive",
         });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+      },
+    }
+  );
 
-    void fetchUserData();
-  }, [session?.user?.email, toast]);
+  const user = useMemo(() => userData?.data || null, [userData?.data]);
+
+  const roles = useMemo(() => user?.roles || [], [user?.roles]);
+
+  const permissions = useMemo(
+    () => user?.permissions || [],
+    [user?.permissions]
+  );
+
+  const errorMessage = useMemo(() => {
+    if (fetchError) {
+      return fetchError instanceof Error
+        ? fetchError.message
+        : "Failed to fetch user data";
+    }
+    if (userData && !userData.success) {
+      return userData.message || "Failed to fetch user data";
+    }
+    return null;
+  }, [fetchError, userData]);
 
   return (
     <DashboardLayout>
@@ -126,134 +264,16 @@ export default function ProfilePage() {
           </p>
         </div>
 
-        {fetchError && (
-          <div className="rounded-md border border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-900 px-3 py-2 text-sm text-red-700 dark:text-red-400">
-            {fetchError}
-          </div>
-        )}
+        {errorMessage && <ErrorMessage message={errorMessage} />}
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <span className="ml-3 text-muted-foreground">
-              Loading profile...
-            </span>
-          </div>
-        ) : !userData ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">
-                Unable to load profile data.
-              </p>
-            </CardContent>
-          </Card>
+          <LoadingState />
+        ) : !user ? (
+          <EmptyState />
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Personal Information
-                </CardTitle>
-                <CardDescription>
-                  Your account details and contact information
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <User className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Name
-                    </p>
-                    <p className="text-lg font-medium">
-                      {userData.name || "Not available"}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Email
-                    </p>
-                    <p className="text-lg font-medium">
-                      {userData.email || "Not available"}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Access Control
-                </CardTitle>
-                <CardDescription>
-                  Your assigned roles and permissions
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Shield className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Roles
-                    </p>
-                  </div>
-                  {userData.roles && userData.roles.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {userData.roles.map((role: Role) => (
-                        <Badge
-                          key={role._id}
-                          variant={
-                            roleVariantMap[role.title.toLowerCase()] ??
-                            "default"
-                          }
-                          className="px-3 py-1.5 text-sm cursor-default"
-                          title={role.description || ""}
-                        >
-                          {role.title}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No roles assigned
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Key className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Permissions
-                    </p>
-                  </div>
-                  {userData.permissions && userData.permissions.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {userData.permissions.map((perm: Permission) => (
-                        <Badge
-                          key={perm._id}
-                          variant="outline"
-                          className="px-3 py-1.5 text-sm cursor-default font-mono"
-                          title={perm.description || ""}
-                        >
-                          {perm.resource}.{perm.action}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No permissions assigned
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            <PersonalInfoCard name={user.name} email={user.email} />
+            <AccessControlCard roles={roles} permissions={permissions} />
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback, memo } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { usePermissions } from "@/hooks/usePermission";
 import { PERMISSION_KEYS } from "@/lib/constants/permissions";
@@ -17,6 +17,211 @@ import {
 import { Menu, FileText, LayoutDashboard } from "lucide-react";
 import Image from "next/image";
 
+const LogoLink = memo(
+  ({
+    onClick,
+    width = 120,
+    height = 30,
+    className = "h-8 w-auto",
+  }: {
+    onClick?: () => void;
+    width?: number;
+    height?: number;
+    className?: string;
+  }) => (
+    <Link href="/" onClick={onClick} className="flex items-center">
+      <Image
+        src="/Logo-with-Text.svg"
+        alt="Sentra Logo"
+        width={width}
+        height={height}
+        priority
+        className={className}
+      />
+    </Link>
+  )
+);
+LogoLink.displayName = "LogoLink";
+
+const GuestActions = memo(
+  ({ isMobile, onClose }: { isMobile?: boolean; onClose?: () => void }) => (
+    <>
+      <Link href="/auth/login" onClick={onClose}>
+        <Button
+          variant="ghost"
+          className={`font-medium ${isMobile ? "w-full justify-start" : ""}`}
+        >
+          Log in
+        </Button>
+      </Link>
+      <Link href="/auth/signup" onClick={onClose}>
+        <Button
+          className={`font-medium ${isMobile ? "w-full justify-start" : ""}`}
+        >
+          Create Account
+        </Button>
+      </Link>
+    </>
+  )
+);
+GuestActions.displayName = "GuestActions";
+
+const LoadingAction = memo(({ isMobile }: { isMobile?: boolean }) => (
+  <Button
+    variant="ghost"
+    disabled
+    className={`font-medium ${isMobile ? "w-full justify-start" : ""}`}
+  >
+    Loading...
+  </Button>
+));
+LoadingAction.displayName = "LoadingAction";
+
+const PostsOnlyActions = memo(
+  ({
+    isMobile,
+    onClose,
+    onLogout,
+  }: {
+    isMobile?: boolean;
+    onClose?: () => void;
+    onLogout: () => void;
+  }) => (
+    <>
+      <Link href="/posts" onClick={onClose}>
+        <Button
+          variant="ghost"
+          className={`font-medium gap-2 ${
+            isMobile ? "w-full justify-start" : ""
+          }`}
+        >
+          <FileText className="h-4 w-4" />
+          View Posts
+        </Button>
+      </Link>
+      <Button
+        variant="destructive"
+        className={`font-medium ${isMobile ? "w-full justify-start" : ""}`}
+        onClick={onLogout}
+      >
+        Logout
+      </Button>
+    </>
+  )
+);
+PostsOnlyActions.displayName = "PostsOnlyActions";
+
+const DashboardActions = memo(
+  ({
+    isMobile,
+    onClose,
+    onLogout,
+  }: {
+    isMobile?: boolean;
+    onClose?: () => void;
+    onLogout: () => void;
+  }) => (
+    <>
+      <Link href="/dashboard" onClick={onClose}>
+        <Button
+          variant="ghost"
+          className={`font-medium gap-2 ${
+            isMobile ? "w-full justify-start" : ""
+          }`}
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          Dashboard
+        </Button>
+      </Link>
+      <Button
+        variant="destructive"
+        className={`font-medium ${isMobile ? "w-full justify-start" : ""}`}
+        onClick={onLogout}
+      >
+        Logout
+      </Button>
+    </>
+  )
+);
+DashboardActions.displayName = "DashboardActions";
+
+const LogoutOnlyAction = memo(
+  ({ isMobile, onLogout }: { isMobile?: boolean; onLogout: () => void }) => (
+    <Button
+      variant="destructive"
+      className={`font-medium ${isMobile ? "w-full justify-start" : ""}`}
+      onClick={onLogout}
+    >
+      Logout
+    </Button>
+  )
+);
+LogoutOnlyAction.displayName = "LogoutOnlyAction";
+
+const DesktopNav = memo(
+  ({
+    isLoggedIn,
+    permsLoading,
+    hasOnlyPostsRead,
+    hasDashboardAccess,
+    onLogout,
+  }: {
+    isLoggedIn: boolean;
+    permsLoading: boolean;
+    hasOnlyPostsRead: boolean;
+    hasDashboardAccess: boolean;
+    onLogout: () => void;
+  }) => (
+    <nav className="hidden md:flex items-center gap-4">
+      {!isLoggedIn ? (
+        <GuestActions />
+      ) : permsLoading ? (
+        <LoadingAction />
+      ) : hasOnlyPostsRead ? (
+        <PostsOnlyActions onLogout={onLogout} />
+      ) : hasDashboardAccess ? (
+        <DashboardActions onLogout={onLogout} />
+      ) : (
+        <LogoutOnlyAction onLogout={onLogout} />
+      )}
+    </nav>
+  )
+);
+DesktopNav.displayName = "DesktopNav";
+
+const MobileNav = memo(
+  ({
+    isLoggedIn,
+    permsLoading,
+    hasOnlyPostsRead,
+    hasDashboardAccess,
+    onClose,
+    onLogout,
+  }: {
+    isLoggedIn: boolean;
+    permsLoading: boolean;
+    hasOnlyPostsRead: boolean;
+    hasDashboardAccess: boolean;
+    onClose: () => void;
+    onLogout: () => void;
+  }) => (
+    <nav className="flex flex-col gap-3">
+      {!isLoggedIn ? (
+        <GuestActions isMobile onClose={onClose} />
+      ) : permsLoading ? (
+        <LoadingAction isMobile />
+      ) : hasOnlyPostsRead ? (
+        <PostsOnlyActions isMobile onClose={onClose} onLogout={onLogout} />
+      ) : hasDashboardAccess ? (
+        <DashboardActions isMobile onClose={onClose} onLogout={onLogout} />
+      ) : (
+        <LogoutOnlyAction isMobile onLogout={onLogout} />
+      )}
+    </nav>
+  )
+);
+MobileNav.displayName = "MobileNav";
+
 export default function Header() {
   const [open, setOpen] = useState(false);
   const { data: session } = useSession();
@@ -26,7 +231,7 @@ export default function Header() {
     loading: permsLoading,
   } = usePermissions();
 
-  const isLoggedIn = !!session?.user;
+  const isLoggedIn = useMemo(() => !!session?.user, [session?.user]);
 
   const hasOnlyPostsRead = useMemo(() => {
     return (
@@ -34,111 +239,72 @@ export default function Header() {
     );
   }, [permissions]);
 
-  const hasDashboardAccess = useMemo(() => {
-    const canManagePosts =
+  const canManagePosts = useMemo(
+    () =>
       hasPermission(PERMISSION_KEYS.POSTS_CREATE) ||
       hasPermission(PERMISSION_KEYS.POSTS_UPDATE) ||
-      hasPermission(PERMISSION_KEYS.POSTS_DELETE);
+      hasPermission(PERMISSION_KEYS.POSTS_DELETE),
+    [hasPermission]
+  );
 
-    const canManageUsers =
+  const canManageUsers = useMemo(
+    () =>
       hasPermission(PERMISSION_KEYS.USERS_CREATE) ||
       hasPermission(PERMISSION_KEYS.USERS_READ) ||
       hasPermission(PERMISSION_KEYS.USERS_UPDATE) ||
-      hasPermission(PERMISSION_KEYS.USERS_DELETE);
+      hasPermission(PERMISSION_KEYS.USERS_DELETE),
+    [hasPermission]
+  );
 
-    const canManageRoles =
+  const canManageRoles = useMemo(
+    () =>
       hasPermission(PERMISSION_KEYS.ROLES_CREATE) ||
       hasPermission(PERMISSION_KEYS.ROLES_READ) ||
       hasPermission(PERMISSION_KEYS.ROLES_UPDATE) ||
-      hasPermission(PERMISSION_KEYS.ROLES_DELETE);
+      hasPermission(PERMISSION_KEYS.ROLES_DELETE),
+    [hasPermission]
+  );
 
-    const canManagePermissions =
+  const canManagePermissions = useMemo(
+    () =>
       hasPermission(PERMISSION_KEYS.PERMISSIONS_CREATE) ||
       hasPermission(PERMISSION_KEYS.PERMISSIONS_READ) ||
       hasPermission(PERMISSION_KEYS.PERMISSIONS_UPDATE) ||
-      hasPermission(PERMISSION_KEYS.PERMISSIONS_DELETE);
+      hasPermission(PERMISSION_KEYS.PERMISSIONS_DELETE),
+    [hasPermission]
+  );
 
+  const hasDashboardAccess = useMemo(() => {
     return (
       canManagePosts || canManageUsers || canManageRoles || canManagePermissions
     );
-  }, [hasPermission]);
+  }, [canManagePosts, canManageUsers, canManageRoles, canManagePermissions]);
 
-  const handleLogout = async () => {
+  const handleLogout = useCallback(async () => {
     await signOut({ callbackUrl: "/" });
-  };
+  }, []);
+
+  const handleCloseSheet = useCallback(() => {
+    setOpen(false);
+  }, []);
+
+  const handleLogoutAndClose = useCallback(() => {
+    setOpen(false);
+    handleLogout();
+  }, [handleLogout]);
 
   return (
     <header className="w-full border-b bg-background/80 backdrop-blur-md sticky top-0 z-50">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-        <Link href="/" className="flex items-center">
-          <Image
-            src="/Logo-with-Text.svg"
-            alt="Sentra Logo"
-            width={120}
-            height={30}
-            priority
-            className="h-8 w-auto"
-          />
-        </Link>
+        <LogoLink />
 
-        <nav className="hidden md:flex items-center gap-4">
-          {!isLoggedIn ? (
-            <>
-              <Link href="/auth/login">
-                <Button variant="ghost" className="font-medium">
-                  Log in
-                </Button>
-              </Link>
-              <Link href="/auth/signup">
-                <Button className="font-medium">Create Account</Button>
-              </Link>
-            </>
-          ) : permsLoading ? (
-            <Button variant="ghost" disabled className="font-medium">
-              Loading...
-            </Button>
-          ) : hasOnlyPostsRead ? (
-            <>
-              <Link href="/posts">
-                <Button variant="ghost" className="font-medium gap-2">
-                  <FileText className="h-4 w-4" />
-                  View Posts
-                </Button>
-              </Link>
-              <Button
-                variant="destructive"
-                className="font-medium"
-                onClick={handleLogout}
-              >
-                Logout
-              </Button>
-            </>
-          ) : hasDashboardAccess ? (
-            <>
-              <Link href="/dashboard">
-                <Button variant="ghost" className="font-medium gap-2">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
-              <Button
-                variant="destructive"
-                className="font-medium"
-                onClick={handleLogout}
-              >
-                Logout
-              </Button>
-            </>
-          ) : (
-            <Button
-              variant="destructive"
-              className="font-medium"
-              onClick={handleLogout}
-            >
-              Logout
-            </Button>
-          )}
-        </nav>
+        <DesktopNav
+          isLoggedIn={isLoggedIn}
+          permsLoading={permsLoading}
+          hasOnlyPostsRead={hasOnlyPostsRead}
+          hasDashboardAccess={hasDashboardAccess}
+          onLogout={handleLogout}
+        />
 
         <div className="md:hidden">
           <Sheet open={open} onOpenChange={setOpen}>
@@ -158,100 +324,22 @@ export default function Header() {
               </SheetHeader>
 
               <div className="mb-6 flex justify-center border-b pb-6">
-                <Link href="/" onClick={() => setOpen(false)}>
-                  <Image
-                    src="/Logo-with-Text.svg"
-                    alt="Sentra Logo"
-                    width={150}
-                    height={35}
-                    priority
-                    className="h-9 w-auto"
-                  />
-                </Link>
+                <LogoLink
+                  onClick={handleCloseSheet}
+                  width={150}
+                  height={35}
+                  className="h-9 w-auto"
+                />
               </div>
 
-              <nav className="flex flex-col gap-3">
-                {!isLoggedIn ? (
-                  <>
-                    <Link href="/auth/login" onClick={() => setOpen(false)}>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start font-medium"
-                      >
-                        Log in
-                      </Button>
-                    </Link>
-                    <Link href="/auth/signup" onClick={() => setOpen(false)}>
-                      <Button className="w-full justify-start font-medium">
-                        Create Account
-                      </Button>
-                    </Link>
-                  </>
-                ) : permsLoading ? (
-                  <Button
-                    variant="ghost"
-                    disabled
-                    className="w-full justify-start font-medium"
-                  >
-                    Loading...
-                  </Button>
-                ) : hasOnlyPostsRead ? (
-                  <>
-                    <Link href="/posts" onClick={() => setOpen(false)}>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start font-medium gap-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        View Posts
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="destructive"
-                      className="w-full justify-start font-medium"
-                      onClick={() => {
-                        setOpen(false);
-                        handleLogout();
-                      }}
-                    >
-                      Logout
-                    </Button>
-                  </>
-                ) : hasDashboardAccess ? (
-                  <>
-                    <Link href="/dashboard" onClick={() => setOpen(false)}>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start font-medium gap-2"
-                      >
-                        <LayoutDashboard className="h-4 w-4" />
-                        Dashboard
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="destructive"
-                      className="w-full justify-start font-medium"
-                      onClick={() => {
-                        setOpen(false);
-                        handleLogout();
-                      }}
-                    >
-                      Logout
-                    </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="destructive"
-                    className="w-full justify-start font-medium"
-                    onClick={() => {
-                      setOpen(false);
-                      handleLogout();
-                    }}
-                  >
-                    Logout
-                  </Button>
-                )}
-              </nav>
+              <MobileNav
+                isLoggedIn={isLoggedIn}
+                permsLoading={permsLoading}
+                hasOnlyPostsRead={hasOnlyPostsRead}
+                hasDashboardAccess={hasDashboardAccess}
+                onClose={handleCloseSheet}
+                onLogout={handleLogoutAndClose}
+              />
             </SheetContent>
           </Sheet>
         </div>

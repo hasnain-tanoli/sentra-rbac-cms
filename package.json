@@ -47,6 +47,7 @@
     "react-dom": "19.2.0",
     "recharts": "^3.3.0",
     "shadcn-ui": "^0.9.5",
+    "swr": "^2.3.6",
     "tailwind-merge": "^3.3.1",
     "tinymce": "^8.2.1"
   },
