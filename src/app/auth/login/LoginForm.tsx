@@ -148,7 +148,17 @@ export default function LoginForm() {
               )}
             </Button>
 
-            <div className="text-center text-sm text-muted-foreground">
+            <div className="mt-4 text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/auth/signup"
+                className="font-medium text-primary hover:underline underline-offset-4"
+              >
+                Sign up
+              </Link>
+            </div>
+
+            <div className="text-center text-sm text-muted-foreground pt-2">
               <Link
                 href="/"
                 className="hover:text-primary underline-offset-4 hover:underline"
