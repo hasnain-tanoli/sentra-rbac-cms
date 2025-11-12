@@ -5,6 +5,8 @@ import { hasPermission } from "@/lib/rbac/checkPermission";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth/options";
 
+export const dynamic = 'force-dynamic';
+
 interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
@@ -26,10 +28,10 @@ function slugify(str: string): string {
   return str
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, '') 
-    .replace(/\s+/g, '-')     
-    .replace(/-+/g, '-')      
-    .replace(/^-+|-+$/g, '');  
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 export async function GET() {

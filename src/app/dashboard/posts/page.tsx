@@ -87,7 +87,10 @@ export default function PostsPage() {
 
   const fetchPosts = useCallback(async () => {
     try {
-      const res = await fetch("/api/posts");
+      const res = await fetch("/api/posts", {
+        method: "GET",
+        cache: "no-store",
+      });
       const data = (await res.json()) as ApiResponse;
       if (res.ok && data.success && data.data) {
         setPosts(data.data);

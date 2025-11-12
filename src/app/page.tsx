@@ -8,29 +8,21 @@ import { Post } from "@/types/post";
 import { FileText, Sparkles, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { connectDB } from "@/lib/db/connection";
+import { Post as PostModel } from "@/lib/db/models/post.model";
+
+export const dynamic = "force-dynamic";
 
 async function getPosts(): Promise<Post[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/posts`, {
-      cache: "no-store",
-    });
+    await connectDB();
 
-    if (!res.ok) {
-      console.error("Failed to fetch posts, status:", res.status);
-      return [];
-    }
+    const posts = await PostModel.find({ status: "published" })
+      .populate("author_id", "name email")
+      .sort({ created_at: -1 })
+      .lean();
 
-    const data: { success: boolean; data: Post[] } = await res.json();
-
-    const publishedPosts = (data.data || []).filter(
-      (post) => post.status === "published"
-    );
-
-    return publishedPosts.sort(
-      (a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
+    return JSON.parse(JSON.stringify(posts)) as Post[];
   } catch (error) {
     console.error("Error fetching posts:", error);
     return [];

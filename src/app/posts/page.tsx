@@ -2,15 +2,16 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { PostCard } from "@/components/posts/PostCard";
 import { Post } from "@/types/post";
-import { FileText, ArrowLeft } from "lucide-react";
+import { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Metadata } from "next";
+import { ArrowRight, FileText } from "lucide-react";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "All Posts | Sentra",
-  description:
-    "Explore our complete collection of articles, updates, and insights.",
+  title: "Home | Sentra",
+  description: "Welcome to Sentra - Your content management system",
 };
 
 async function getPosts(): Promise<Post[]> {
@@ -38,55 +39,66 @@ async function getPosts(): Promise<Post[]> {
   }
 }
 
-export default async function AllPostsPage() {
+export default async function HomePage() {
   const posts = await getPosts();
+  const recentPosts = posts.slice(0, 6);
 
   return (
     <>
       <Header />
 
       <main className="mx-auto max-w-6xl px-6 md:px-8 py-16">
-        <section className="w-full space-y-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 className="text-4xl font-bold flex items-center gap-3">
-                <FileText className="h-8 w-8" />
-                All Posts
-              </h1>
-              <p className="text-muted-foreground mt-2">
-                Explore our complete collection of articles and updates.
-              </p>
-            </div>
-            <Link href="/">
-              <Button
-                variant="outline"
-                className="gap-2 self-start sm:self-center"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Home
-              </Button>
-            </Link>
-          </div>
+        <section className="text-center space-y-4 mb-16">
+          <h1 className="text-5xl font-bold tracking-tight">
+            Welcome to Sentra
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            Your powerful role-based content management system
+          </p>
+        </section>
 
-          {posts.length === 0 ? (
-            <div className="rounded-md border mt-8">
-              <div className="px-4 py-24 text-center">
-                <FileText className="h-16 w-16 mx-auto mb-6 opacity-20" />
-                <h3 className="text-xl font-semibold mb-2">No Posts Found</h3>
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  There are currently no published posts to display. Please
-                  check back later.
+        {recentPosts.length > 0 && (
+          <section className="w-full space-y-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-bold flex items-center gap-3">
+                  <FileText className="h-7 w-7" />
+                  Recent Posts
+                </h2>
+                <p className="text-muted-foreground mt-2">
+                  Check out our latest articles and updates
                 </p>
               </div>
+              {posts.length > 6 && (
+                <Link href="/posts">
+                  <Button variant="outline" className="gap-2">
+                    View All
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
             </div>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 pt-4">
-              {posts.map((post) => (
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {recentPosts.map((post) => (
                 <PostCard key={post._id} post={post} />
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        )}
+
+        {posts.length === 0 && (
+          <div className="rounded-md border mt-8">
+            <div className="px-4 py-24 text-center">
+              <FileText className="h-16 w-16 mx-auto mb-6 opacity-20" />
+              <h3 className="text-xl font-semibold mb-2">No Posts Yet</h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                There are currently no published posts to display. Check back
+                soon for updates!
+              </p>
+            </div>
+          </div>
+        )}
       </main>
 
       <Footer />
