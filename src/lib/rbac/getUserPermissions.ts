@@ -1,3 +1,4 @@
+import { connectDB } from '../db/connection';
 import { UserRole } from '../db/models/userRole.model';
 import mongoose from 'mongoose';
 
@@ -10,8 +11,11 @@ export interface PermissionInfo {
 export async function getUserPermissions(
   userId: string | mongoose.Types.ObjectId
 ): Promise<PermissionInfo[]> {
-  const userObjectId = typeof userId === 'string' 
-    ? new mongoose.Types.ObjectId(userId) 
+
+  await connectDB();
+
+  const userObjectId = typeof userId === 'string'
+    ? new mongoose.Types.ObjectId(userId)
     : userId;
 
   const result = await UserRole.aggregate([
